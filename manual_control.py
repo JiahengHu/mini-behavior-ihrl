@@ -153,9 +153,10 @@ parser.add_argument(
     # default='MiniGrid-ThrowLeftoversFourRooms-8x8-N2-v1'
     # default='MiniGrid-FloorPlanEnv-16x16-N1-v0'
     # default='MiniGrid-TwoRoomNavigation-8x8-N2-v0'
-    default='MiniGrid-ThrowLeftoversSceneEnv-0x0-N2-v0'
+    # default='MiniGrid-ThrowLeftoversSceneEnv-0x0-N2-v0'
     # default='MiniGrid-ThrowLeftovers-16x16-N2-v1'
     # default='MiniGrid-InstallingAPrinter-16x16-N2-v1'
+    default='MiniGrid-InstallingAPrinter-16x16-N2-v1'
 )
 parser.add_argument(
     "--seed",
@@ -191,6 +192,9 @@ parser.add_argument(
 args = parser.parse_args()
 
 env = gym.make(args.env)
+
+import ipdb
+ipdb.set_trace()
 
 all_steps = {}
 

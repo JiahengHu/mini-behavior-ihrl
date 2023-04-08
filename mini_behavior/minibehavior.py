@@ -104,6 +104,16 @@ class MiniBehaviorEnv(MiniGridEnv):
 
         self.carrying = set()
 
+        # Initialize the state and action api
+        self.observation_dims = self.get_observation_dims()
+        self.observation_spec = self.observation_dims
+
+    def get_observation_dims(self):
+        """
+        dict, {obs_key: obs_range}
+        """
+        raise NotImplemented
+
     def copy_objs(self):
         from copy import deepcopy
         return deepcopy(self.objs), deepcopy(self.obj_instances)

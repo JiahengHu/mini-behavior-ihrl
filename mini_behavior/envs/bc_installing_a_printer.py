@@ -34,6 +34,7 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
     ):
         self.printer = None
         self.table = None
+        self.room_size=room_size
 
         super().__init__(mode=mode,
                          room_size=room_size,
@@ -42,21 +43,70 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
                          max_steps=max_steps
                          )
 
+        # This is quite hacky..
         self.actions = SimpleInstallingAPrinterEnv.Actions
         self.action_space = spaces.Discrete(len(self.actions))
+        self.action_dim = len(self.actions)
 
-        self.observation_space = spaces.Dict(
-            {
-                "agent_x": spaces.Discrete(room_size),
-                "agent_y": spaces.Discrete(room_size),
-                "printer_inhandofrobot": spaces.Discrete(2),
-                "printer_toggledon": spaces.Discrete(2),
-                "printer_ontop_table": spaces.Discrete(2),
-                "agent_dir": spaces.Discrete(4),
-            }
-        )
+        # self.observation_space = spaces.Dict(
+        #     {
+        #         "agent_pos": spaces.Discrete((room_size, room_size)),
+        #         "agent_dir": spaces.Discrete(4),
+        #         "printer_pos": np.array([self.room_size, self.room_size]),
+        #         "printer_state": np.array([2, 2, 2]),
+        #         "table_pos": np.array([self.room_size, self.room_size])
+        #     }
+        # )
 
         self.reward_range = (-math.inf, math.inf)
+
+    def get_observation_dims(self):
+        return {
+            "agent_pos": np.array([self.room_size, self.room_size]),
+            "agent_dir": np.array([4]),
+            "printer_pos": np.array([self.room_size, self.room_size]),
+            "printer_state": np.array([2, 2, 2]),
+            "table_pos": np.array([self.room_size, self.room_size])
+        }
+
+
+    def generate_action(self):
+        # probability of choosing the hand-crafted action
+        prob = 1.0 # 0.8
+        if self.np_random.random() < prob:
+            return self.hand_crafted_policy()
+        else:
+            return self.action_space.sample()
+
+    def sample_nav_action(self):
+        return self.np_random.choice(3, p=[0.25, 0.25, 0.5])  # navigation
+
+    def hand_crafted_policy(self):
+        """
+        A hand-crafted function to select action for next step
+        Notice that navigation is still random
+        """
+        # Get the position in front of the agent
+        fwd_pos = self.front_pos
+        # Get the contents of the cell in front of the agent
+        fwd_cell = self.grid.get(*fwd_pos)
+
+        if not self.printer_toggledon and Toggle(self).can(self.printer): # and (self.printer_ontop_table or self.printer_inhandofrobot):
+            action = 5  # toggle
+
+        elif self.printer_inhandofrobot:
+            if self.table in fwd_cell[1]:
+                action = 4 # drop
+            else:
+                action = self.sample_nav_action()
+
+        elif not self.printer_ontop_table and Pickup(self).can(self.printer):
+            action = 3
+
+        else:
+            action = self.sample_nav_action()
+
+        return action
 
     def gen_obs(self):
         self.printer = self.objs['printer'][0]
@@ -64,15 +114,18 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
 
         printer_inhandofrobot = int(self.printer.check_abs_state(self, 'inhandofrobot'))
         printer_ontop_table = int(self.printer.check_rel_state(self, self.table, 'onTop'))
-        printer_toggledon = int(self.printer.check_abs_state(self, 'toggledon'))
+        printer_toggledon = int(self.printer.check_abs_state(self, 'toggleable'))
+
+        self.printer_inhandofrobot = printer_inhandofrobot
+        self.printer_ontop_table = printer_ontop_table
+        self.printer_toggledon = printer_toggledon
 
         obs = {
-            "agent_x": self.agent_pos[0],
-            "agent_y": self.agent_pos[1],
+            "agent_pos": np.array(self.agent_pos),
             "agent_dir": self.agent_dir,
-            "printer_inhandofrobot": printer_inhandofrobot,
-            "printer_toggledon": printer_ontop_table,
-            "printer_ontop_table": printer_toggledon,
+            "printer_pos": np.array(self.printer.cur_pos),
+            "printer_state": np.array([printer_inhandofrobot, printer_ontop_table, printer_toggledon]),
+            "table_pos": np.array(self.table.cur_pos)
         }
 
         return obs
@@ -81,10 +134,11 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         printer = self.objs['printer'][0]
         table = self.objs['table'][0]
 
-        # table_pos = (5, 3)
-        # printer_pos = (8, 12)
-        table_pos = (1, 2)
-        printer_pos = (6, 5)
+        # table_pos = (1, 2)
+        # printer_pos = (6, 5)
+
+        table_pos = np.random.randint(1, self.room_size-2, size=2) # Make sure the table spawn within range...
+        printer_pos = np.random.randint(1, self.room_size-1, size=2)
         self.put_obj(table, *table_pos, 0)
         self.put_obj(printer, *printer_pos, 0)
 
@@ -126,7 +180,7 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
 
         self.update_states()
         reward = self._reward()
-        done = self._end_conditions() # self.step_count >= self.max_steps
+        done = self._end_conditions() or self.step_count >= self.max_steps
         obs = self.gen_obs()
 
         return obs, reward, done, {}
