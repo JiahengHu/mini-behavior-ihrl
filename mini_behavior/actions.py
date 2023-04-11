@@ -232,7 +232,8 @@ class Pickup(BaseAction):
             self.env.grid.set_all_objs(*obj.cur_pos, new_objs)
 
         # update cur_pos of obj
-        obj.update_pos(np.array([-1, -1]))
+        # obj.update_pos(np.array([-1, -1]))
+        obj.update_pos(np.array([0, 0]))  # To help with one-hot encoding
 
         # check dependencies
         assert obj.check_abs_state(self.env, 'inhandofrobot')

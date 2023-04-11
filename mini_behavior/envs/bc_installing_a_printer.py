@@ -15,6 +15,9 @@ from .installing_a_printer import InstallingAPrinterEnv
 class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
     """
     Environment in which the agent is instructed to install a printer
+    This is a wrapper around the original mini-behavior environment where states are represented by category, and
+    actions are converted to integer selection
+    Todo: move this to rl_installing_a_printer.py
     """
     class Actions(IntEnum):
         left = 0
@@ -32,8 +35,6 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
             num_cols=1,
             max_steps=50,
     ):
-        self.printer = None
-        self.table = None
         self.room_size=room_size
 
         super().__init__(mode=mode,
@@ -47,16 +48,6 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         self.actions = SimpleInstallingAPrinterEnv.Actions
         self.action_space = spaces.Discrete(len(self.actions))
         self.action_dim = len(self.actions)
-
-        # self.observation_space = spaces.Dict(
-        #     {
-        #         "agent_pos": spaces.Discrete((room_size, room_size)),
-        #         "agent_dir": spaces.Discrete(4),
-        #         "printer_pos": np.array([self.room_size, self.room_size]),
-        #         "printer_state": np.array([2, 2, 2]),
-        #         "table_pos": np.array([self.room_size, self.room_size])
-        #     }
-        # )
 
         self.reward_range = (-math.inf, math.inf)
 
@@ -109,8 +100,8 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         return action
 
     def gen_obs(self):
-        self.printer = self.objs['printer'][0]
-        self.table = self.objs['table'][0]
+        # self.printer = self.objs['printer'][0]
+        # self.table = self.objs['table'][0]
 
         printer_inhandofrobot = int(self.printer.check_abs_state(self, 'inhandofrobot'))
         printer_ontop_table = int(self.printer.check_rel_state(self, self.table, 'onTop'))
@@ -133,6 +124,9 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
     def _gen_objs(self):
         printer = self.objs['printer'][0]
         table = self.objs['table'][0]
+
+        self.printer = printer
+        self.table = table
 
         # table_pos = (1, 2)
         # printer_pos = (6, 5)
@@ -210,6 +204,7 @@ register(
 class SimpleInstallingAPrinterTwoEnv(InstallingAPrinterEnv):
     """
     Environment in which the agent is instructed to install a printer
+    The only difference between this env and the previous is that this has wall
     """
     class Actions(IntEnum):
         left = 0

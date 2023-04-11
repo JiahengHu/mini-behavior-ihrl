@@ -88,26 +88,55 @@ class Dusty(AbilityState):
                     self.value = False
 
 
+# New Frozen, with a continuous state change
 class Frozen(AbilityState):
     def __init__(self, obj, key):
         super(Frozen, self).__init__(obj, key)
         self.tools = ["electric_refrigerator"]
+        self.defrost_tools = ["sink"]
+        self.value = 5
+        self.value_max = 5
+        self.value_min = 0
 
     def _get_value(self, env):
         """
-        True: coldSource is toggled on AND obj, cold source are at same location
-        False: coldsource is toggled off OR obj, cold source are not at same location
-
-        NOTE: refrigerator isnt togglebale
+        A level from 0 to 5
         """
-        self.value = False
+        return self.value
 
+    def _update(self, env=None):
         for tool_type in self.tools:
             for cold_source in env.objs.get(tool_type, []):
                 if self.obj.check_rel_state(env, cold_source, 'inside'):
-                    self.value = True
+                    self.value += 1
+        for tool_type in self.defrost_tools:
+            for defrost_source in env.objs.get(tool_type, []):
+                if self.obj.check_rel_state(env, defrost_source, 'nextto'):
+                    self.value -= 1
+        self.value = np.clip(self.value,self.value_min, self.value_max)
 
-        return self.value
+
+
+# class Frozen(AbilityState):
+#     def __init__(self, obj, key):
+#         super(Frozen, self).__init__(obj, key)
+#         self.tools = ["electric_refrigerator"]
+#
+#     def _get_value(self, env):
+#         """
+#         True: coldSource is toggled on AND obj, cold source are at same location
+#         False: coldsource is toggled off OR obj, cold source are not at same location
+#
+#         NOTE: refrigerator isnt togglebale
+#         """
+#         self.value = False
+#
+#         for tool_type in self.tools:
+#             for cold_source in env.objs.get(tool_type, []):
+#                 if self.obj.check_rel_state(env, cold_source, 'inside'):
+#                     self.value = True
+#
+#         return self.value
 
 
 class Opened(AbilityState):
@@ -225,15 +254,20 @@ class NextTo(RelativeObjectState):
         right_2 = left_2 + other.width - 1
         top_2 = bottom_2 + other.height - 1
 
-        # above, below
-        if left_1 <= right_2 and left_2 <= right_1:
-            if bottom_2 - top_1 == 1 or bottom_1 - top_2 == 1:
-                return True
+        # This next to is strictly next to
+        # # above, below
+        # if left_1 <= right_2 and left_2 <= right_1:
+        #     if bottom_2 - top_1 == 1 or bottom_1 - top_2 == 1:
+        #         return True
+        #
+        # # left, right
+        # if top_1 >= bottom_2 and top_2 >= bottom_1:
+        #     if left_1 - right_2 == 1 or left_2 - right_1 == 1:
+        #         return True
 
-        # left, right
-        if top_1 >= bottom_2 and top_2 >= bottom_1:
-            if left_1 - right_2 == 1 or left_2 - right_1 == 1:
-                return True
+        # Instead, change it to allow overlapping
+        if left_1 <= right_2 and left_2 <= right_1 and top_1 >= bottom_2 and top_2 >= bottom_1:
+            return True
 
         return False
 

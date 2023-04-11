@@ -5,6 +5,7 @@ import pickle as pkl
 from enum import IntEnum
 from gym import spaces
 from gym_minigrid.minigrid import MiniGridEnv
+from gym_minigrid.minigrid import DIR_TO_VEC
 from bddl.actions import ACTION_FUNC_MAPPING
 from .objects import *
 from .grid import BehaviorGrid, GridDimension, is_obj
@@ -112,7 +113,7 @@ class MiniBehaviorEnv(MiniGridEnv):
         """
         dict, {obs_key: obs_range}
         """
-        raise NotImplemented
+        pass
 
     def copy_objs(self):
         from copy import deepcopy
@@ -496,3 +497,90 @@ class MiniBehaviorEnv(MiniGridEnv):
     def switch_dim(self, dim):
         self.render_dim = dim
         self.grid.render_dim = dim
+
+    ################################
+    #### For scripted policies  ####
+    ################################
+    def sample_nav_action(self):
+        return self.np_random.choice(3, p=[0.25, 0.25, 0.5])  # navigation
+
+    def check_forward(self, cur):
+        """
+        helper function, check whether the agent can move forward
+        """
+        forward_grid = cur + DIR_TO_VEC[self.agent_dir]
+        fwd_cell = self.grid.get(*forward_grid)
+        return self.check_empty(fwd_cell)
+
+    def check_left(self, cur):
+        """
+        helper function, check whether the agent can move left
+        """
+        left_grid = cur + DIR_TO_VEC[(self.agent_dir + 1) % 4]
+        left_cell = self.grid.get(*left_grid)
+        return self.check_empty(left_cell)
+
+    def check_right(self, cur):
+        """
+        helper function, check whether the agent can move right
+        """
+        right_grid = cur + DIR_TO_VEC[(self.agent_dir - 1) % 4]
+        right_cell = self.grid.get(*right_grid)
+        return self.check_empty(right_cell)
+
+    def navigate_to(self, target, cur, dir):
+        # This may get stuck
+        # Minigrid has a weird coordinate system, where the y axis is pointing down
+
+        diff = target - cur
+        can_forward = self.check_forward(cur)
+        can_left = self.check_left(cur)
+        can_right = self.check_right(cur)
+        print(f"forward, left, right, {can_forward, can_left, can_right}")
+        # Facing right
+        if dir == 0:
+            if diff[0] > 0:
+                return self.actions.forward
+            elif diff[1] < 0:
+                return self.actions.left
+            else:
+                return self.actions.right
+        # Up
+        elif dir == 1:
+            if diff[1] > 0:
+                return self.actions.forward
+            elif diff[0] < 0:
+                return self.actions.right
+            else:
+                return self.actions.left
+        # Facing left
+        elif dir == 2:
+            if diff[0] < 0:
+                return self.actions.forward
+            elif diff[1] > 0:
+                return self.actions.left
+            else:
+                return self.actions.right
+        # Facing down
+        elif dir == 3:
+            if diff[1] < 0:
+                return self.actions.forward
+            elif diff[0] > 0:
+                return self.actions.right
+            else:
+                return self.actions.left
+
+
+    def check_empty(self, cell):
+        """
+        A cell has 3 dimensions
+        """
+        for dim in cell:
+            if not all(v is None for v in dim):
+                return False
+        return True
+
+    ################################
+    #### End of scripted policies  ####
+    ################################
+

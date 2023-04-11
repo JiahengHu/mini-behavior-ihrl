@@ -193,9 +193,6 @@ args = parser.parse_args()
 
 env = gym.make(args.env)
 
-import ipdb
-ipdb.set_trace()
-
 all_steps = {}
 
 if args.agent_view:

@@ -15,7 +15,7 @@ class ThawingFrozenFoodEnv(RoomGrid):
             num_cols=1,
             max_steps=1e5,
     ):
-        num_objs = {'date': 1, 'electric_refrigerator': 1, 'olive': 1, 'fish': 4, 'sink': 1}
+        num_objs = {'date': 1, 'electric_refrigerator': 1, 'olive': 1, 'fish': 1, 'sink': 1} # fish = 4 originally
 
         self.mission = 'thaw frozen food'
 
@@ -34,27 +34,31 @@ class ThawingFrozenFoodEnv(RoomGrid):
         electric_refrigerator = self.objs['electric_refrigerator'][0]
         sink = self.objs['sink'][0]
 
+
         self.place_obj(electric_refrigerator)
         self.place_obj(sink)
 
         fridge_pos = self._rand_subset(electric_refrigerator.all_pos, 4)
+        # We make sure that all objects are of the same dimension
         self.put_obj(date[0], *fridge_pos[0], 1)
-        self.put_obj(olive[0], *fridge_pos[1], 1)
+        self.put_obj(olive[0], *fridge_pos[1], 0)
         self.put_obj(fish[0], *fridge_pos[2], 2)
-        self.put_obj(fish[1], *fridge_pos[3], 1)
-        self.put_obj(fish[2], *fridge_pos[0], 0)
-        self.put_obj(fish[3], *fridge_pos[2], 2)
+        # self.put_obj(fish[1], *fridge_pos[3], 1)
+        # self.put_obj(fish[2], *fridge_pos[0], 0)
+        # self.put_obj(fish[3], *fridge_pos[2], 2)
 
         for obj in date + olive + fish:
             obj.states['inside'].set_value(electric_refrigerator, True)
 
     def _reward(self):
-        return 0
+        if self._end_conditions():
+            return 1
+        else:
+            return 0
 
     def _init_conditions(self):
         for obj in self.objs['date'] + self.objs['olive'] + self.objs['fish']:
             assert obj.check_abs_state(self, 'freezable')
-
 
     def _end_conditions(self):
         date = self.objs['date'][0]
@@ -74,7 +78,7 @@ class ThawingFrozenFoodEnv(RoomGrid):
             if not fish.check_rel_state(self, sink, 'nextto'):
                 return False
 
-        if not olive.check_rel_state(self, sink, 'nexxto'):
+        if not olive.check_rel_state(self, sink, 'nextto'):
             return False
 
         return True

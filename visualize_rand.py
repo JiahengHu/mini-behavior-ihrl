@@ -66,7 +66,7 @@ for episode in range(args.episodes):
         if args.gif:
             frames.append(numpy.moveaxis(env.render("rgb_array"), 2, 0))
 
-        action = env.generate_action() # action_space.sample()
+        action = env.generate_action()  # action_space.sample()
         obs, reward, done, _ = env.step(action)
         # print(env.last_action.name)
         print(action)
