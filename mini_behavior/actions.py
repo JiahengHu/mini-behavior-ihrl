@@ -235,6 +235,12 @@ class Pickup(BaseAction):
         # obj.update_pos(np.array([-1, -1]))
         obj.update_pos(np.array([0, 0]))  # To help with one-hot encoding
 
+        # We need to remove "inside"
+        fwd_pos = self.env.front_pos
+        furniture = self.env.grid.get_furniture(*fwd_pos, dim)
+        if furniture is not None:
+            obj.states['inside'].set_value(furniture, False)
+
         # check dependencies
         assert obj.check_abs_state(self.env, 'inhandofrobot')
         assert not obj.check_abs_state(self.env, 'onfloor')

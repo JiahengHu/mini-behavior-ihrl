@@ -70,12 +70,18 @@ class ThawingFrozenFoodEnv(RoomGrid):
         for fish in fishes:
             if date.check_rel_state(self, fish, 'nextto'):
                 nextto = True
-
         if not nextto:
+            return False
+
+        if not date.check_abs_state(self, "freezable") == 0:
+            return False
+        if not olive.check_abs_state(self, "freezable") == 0:
             return False
 
         for fish in fishes:
             if not fish.check_rel_state(self, sink, 'nextto'):
+                return False
+            if not fish.check_abs_state(self, "freezable") == 0:
                 return False
 
         if not olive.check_rel_state(self, sink, 'nextto'):

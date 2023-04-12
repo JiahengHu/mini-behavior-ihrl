@@ -77,6 +77,7 @@ class WorldObj:
         self.contains = None
         self.inside_of = None
 
+
     def check_abs_state(self, env=None, state=None):
         if state is not None:
             return state in self.states.keys() and self.states[state].get_value(env)
@@ -173,7 +174,7 @@ class WorldObj:
         # CHANGE
         for state in self.states.values():
             if state.type == 'absolute':
-                state.set_value(False)
+                state.set_value(state.default_value)
 
     def update(self, env):
         """Method to trigger/toggle an action this object performs"""

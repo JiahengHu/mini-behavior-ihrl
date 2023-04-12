@@ -36,6 +36,7 @@ class BaseObjectState:
         super(BaseObjectState, self).__init__()
         self.obj = obj
         self.name = key
+        self.default_value = False  # This determines the initial value for each field
 
     # def update(self, *args, **kwargs):
     #     # assert self._initialized, "Cannot update uninitalized state."

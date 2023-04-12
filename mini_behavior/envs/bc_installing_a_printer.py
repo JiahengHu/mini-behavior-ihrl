@@ -69,9 +69,6 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         else:
             return self.action_space.sample()
 
-    def sample_nav_action(self):
-        return self.np_random.choice(3, p=[0.25, 0.25, 0.5])  # navigation
-
     def hand_crafted_policy(self):
         """
         A hand-crafted function to select action for next step
@@ -82,26 +79,24 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         # Get the contents of the cell in front of the agent
         fwd_cell = self.grid.get(*fwd_pos)
 
-        if not self.printer_toggledon and Toggle(self).can(self.printer): # and (self.printer_ontop_table or self.printer_inhandofrobot):
-            action = 5  # toggle
+        if not self.printer_toggledon and Toggle(self).can(self.printer):
+            action = self.actions.toggle  # toggle
 
         elif self.printer_inhandofrobot:
             if self.table in fwd_cell[1]:
-                action = 4 # drop
+                action = self.actions.drop # drop
             else:
-                action = self.sample_nav_action()
-
+                action = self.navigate_to(self.table.cur_pos)
         elif not self.printer_ontop_table and Pickup(self).can(self.printer):
-            action = 3
-
+            action = self.actions.pickup
         else:
-            action = self.sample_nav_action()
+            action = self.navigate_to(self.printer.cur_pos)
 
         return action
 
     def gen_obs(self):
-        # self.printer = self.objs['printer'][0]
-        # self.table = self.objs['table'][0]
+        self.printer = self.objs['printer'][0]
+        self.table = self.objs['table'][0]
 
         printer_inhandofrobot = int(self.printer.check_abs_state(self, 'inhandofrobot'))
         printer_ontop_table = int(self.printer.check_rel_state(self, self.table, 'onTop'))
@@ -124,9 +119,6 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
     def _gen_objs(self):
         printer = self.objs['printer'][0]
         table = self.objs['table'][0]
-
-        self.printer = printer
-        self.table = table
 
         # table_pos = (1, 2)
         # printer_pos = (6, 5)

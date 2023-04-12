@@ -1,6 +1,23 @@
 # Mini-BEHAVIOR
 ###  MiniGrid Implementation of BEHAVIOR Tasks
 
+### For Local Causality
+**Current tested environments:**
+1. MiniGrid-SimpleInstallingAPrinter-16x16-N2-v0
+2. MiniGrid-SimpleInstallingAPrinter-8x8-N2-v0
+3. MiniGrid-SimpleThawingFrozenFoodEnv-16x16-N2-v0
+4. MiniGrid-SimpleThawingFrozenFoodEnv-8x8-N2-v0
+
+* To collect data:
+```buildoutcfg
+python collect_random_data.py --env ENVNAME
+```
+
+* To visualize an environment (and the scripted policy):
+```buildoutcfg
+python visualize_rand.py --env ENVNAME
+```
+
 ### Environment Setup
 * Follow setup instructions from: https://github.com/Farama-Foundation/gym-minigrid.
    pip install gym-minigrid==1.0.3

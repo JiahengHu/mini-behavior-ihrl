@@ -17,7 +17,7 @@ from rl.utils.other import seed, device
 parser = argparse.ArgumentParser()
 parser.add_argument("--env", default='MiniGrid-SimpleInstallingAPrinter-8x8-N2-v0', # 'MiniGrid-FloorPlanEnv-16x16-N1-v0',
                     help="name of the environment to be run (REQUIRED)")
-parser.add_argument("--seed", type=int, default=10,
+parser.add_argument("--seed", type=int, default=20,
                     help="random seed (default: 0)")
 parser.add_argument("--shift", type=int, default=0,
                     help="number of times the environment is reset at the beginning (default: 0)")
@@ -38,7 +38,7 @@ args = parser.parse_args()
 
 # Set seed for all randomness sources
 
-# seed(args.seed)
+seed(args.seed)
 
 # Set device
 

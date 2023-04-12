@@ -433,7 +433,6 @@ class MiniBehaviorEnv(MiniGridEnv):
             for name, state in obj.states.items():
                 if state.type == 'absolute':
                     state._update(self)
-
         self.grid.state_values = {obj: obj.get_ability_values(self) for obj in self.obj_instances.values()}
 
     def render(self, mode='human', highlight=True, tile_size=TILE_PIXELS):
@@ -510,65 +509,99 @@ class MiniBehaviorEnv(MiniGridEnv):
         """
         forward_grid = cur + DIR_TO_VEC[self.agent_dir]
         fwd_cell = self.grid.get(*forward_grid)
-        return self.check_empty(fwd_cell)
+        return self.check_empty(fwd_cell), forward_grid
 
     def check_left(self, cur):
         """
         helper function, check whether the agent can move left
         """
-        left_grid = cur + DIR_TO_VEC[(self.agent_dir + 1) % 4]
+        left_grid = cur + DIR_TO_VEC[(self.agent_dir - 1) % 4]
         left_cell = self.grid.get(*left_grid)
-        return self.check_empty(left_cell)
+        return self.check_empty(left_cell), left_grid
 
     def check_right(self, cur):
         """
         helper function, check whether the agent can move right
         """
-        right_grid = cur + DIR_TO_VEC[(self.agent_dir - 1) % 4]
+        right_grid = cur + DIR_TO_VEC[(self.agent_dir + 1) % 4]
         right_cell = self.grid.get(*right_grid)
-        return self.check_empty(right_cell)
+        return self.check_empty(right_cell), right_grid
 
-    def navigate_to(self, target, cur, dir):
+    def navigate_to(self, target):
         # This may get stuck
         # Minigrid has a weird coordinate system, where the y axis is pointing down
 
-        diff = target - cur
-        can_forward = self.check_forward(cur)
-        can_left = self.check_left(cur)
-        can_right = self.check_right(cur)
-        print(f"forward, left, right, {can_forward, can_left, can_right}")
+        cur = np.array(self.agent_pos)
+        dir = self.agent_dir
+
+        diff = np.array(target) - cur
+        can_forward, forward_grid = self.check_forward(cur)
+        can_left, left_grid = self.check_left(cur)
+        can_right, right_grid = self.check_right(cur)
+        # print(f"forward, left, right, {can_forward, can_left, can_right}")
+
+        # When arrived, stop
+        if np.all(forward_grid == target):
+            return self.actions.forward
+        if np.all(left_grid == target):
+            return self.actions.left
+        if np.all(right_grid == target):
+            return self.actions.right
+
+        def take_some_valid_action():
+            if can_forward:
+                return self.actions.forward
+            elif not can_left:
+                return self.actions.right
+            elif not can_right:
+                return self.actions.left
+            else:
+                return np.random.choice([self.actions.right, self.actions.left])
+
         # Facing right
         if dir == 0:
-            if diff[0] > 0:
+            if diff[0] > 0 and can_forward:
                 return self.actions.forward
-            elif diff[1] < 0:
+            elif diff[1] < 0 and can_left:
                 return self.actions.left
-            else:
+            elif diff[1] > 0 and can_right:
                 return self.actions.right
+            # If the first three check fails, there is no clear action to take
+            else:
+                return take_some_valid_action()
         # Up
         elif dir == 1:
-            if diff[1] > 0:
+            if diff[1] > 0 and can_forward:
                 return self.actions.forward
-            elif diff[0] < 0:
+            elif diff[0] < 0 and can_right:
                 return self.actions.right
-            else:
+            elif diff[0] > 0 and can_left:
                 return self.actions.left
+            # If the first three check fails, there is no clear action to take
+            else:
+                return take_some_valid_action()
         # Facing left
         elif dir == 2:
-            if diff[0] < 0:
+            if diff[0] < 0 and can_forward:
                 return self.actions.forward
-            elif diff[1] > 0:
+            elif diff[1] > 0 and can_left:
                 return self.actions.left
-            else:
+            elif diff[1] < 0 and can_right:
                 return self.actions.right
+            # If the first three check fails, there is no clear action to take
+            else:
+                return take_some_valid_action()
         # Facing down
         elif dir == 3:
-            if diff[1] < 0:
+            if diff[1] < 0 and can_forward:
                 return self.actions.forward
-            elif diff[0] > 0:
+            elif diff[0] > 0 and can_right:
                 return self.actions.right
-            else:
+            elif diff[0] < 0 and can_left:
                 return self.actions.left
+            # If the first three check fails, there is no clear action to take
+            else:
+                return take_some_valid_action()
 
 
     def check_empty(self, cell):

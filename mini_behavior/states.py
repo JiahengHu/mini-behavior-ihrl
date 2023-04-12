@@ -21,7 +21,7 @@ class InFOVOfRobot(AbsoluteObjectState):
 class InHandOfRobot(AbsoluteObjectState):
     # return true if agent is carrying the object
     def _get_value(self, env=None):
-        return np.all(self.obj.cur_pos == np.array([-1, -1]))
+        return np.all(self.obj.cur_pos == np.array([0, 0]))
 
 
 class InReachOfRobot(AbsoluteObjectState):
@@ -94,9 +94,9 @@ class Frozen(AbilityState):
         super(Frozen, self).__init__(obj, key)
         self.tools = ["electric_refrigerator"]
         self.defrost_tools = ["sink"]
-        self.value = 5
         self.value_max = 5
         self.value_min = 0
+        self.default_value = 3
 
     def _get_value(self, env):
         """
@@ -105,6 +105,7 @@ class Frozen(AbilityState):
         return self.value
 
     def _update(self, env=None):
+        # Depending on where the the object is, frozen is updated differently
         for tool_type in self.tools:
             for cold_source in env.objs.get(tool_type, []):
                 if self.obj.check_rel_state(env, cold_source, 'inside'):
@@ -113,10 +114,12 @@ class Frozen(AbilityState):
             for defrost_source in env.objs.get(tool_type, []):
                 if self.obj.check_rel_state(env, defrost_source, 'nextto'):
                     self.value -= 1
-        self.value = np.clip(self.value,self.value_min, self.value_max)
+        self.value = np.clip(self.value, self.value_min, self.value_max)
 
+    def get_value(self, *args, **kwargs):
+        return self._get_value(*args, **kwargs)
 
-
+# # Original Frozen
 # class Frozen(AbilityState):
 #     def __init__(self, obj, key):
 #         super(Frozen, self).__init__(obj, key)

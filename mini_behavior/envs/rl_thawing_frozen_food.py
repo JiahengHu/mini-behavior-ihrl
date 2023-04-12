@@ -38,7 +38,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             room_size=16,
             num_rows=1,
             num_cols=1,
-            max_steps=150,
+            max_steps=100,
     ):
         self.room_size = room_size
 
@@ -80,40 +80,49 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         else:
             return self.action_space.sample()
 
-
-
     def hand_crafted_policy(self):
         """
         A hand-crafted function to select action for next step
-        Notice that navigation is still random
+        Navigation is accurate
         """
         # Get the position in front of the agent
         fwd_pos = self.front_pos
         # Get the contents of the cell in front of the agent
         fwd_cell = self.grid.get(*fwd_pos)
 
-        # If any one of the object is not in frig, we go to the frig and drop it
-        # test navigate to frig
-        return self.navigate_to(np.array(self.electric_refrigerator.cur_pos), np.array(self.agent_pos), self.agent_dir)
+        # Open the frig
+        if not self.frig_open and Open(self).can(self.electric_refrigerator):
+            action = self.actions.open
+        # If any one of the object is in frig, we go to the frig and pick it up
+        elif self.olive_inside:
+            if Pickup(self).can(self.olive):
+                action = self.actions.pickup_olive
+            else:
+                action = self.navigate_to(np.array(self.olive.cur_pos))
+        elif self.fish_inside:
+            if Pickup(self).can(self.fish):
+                action = self.actions.pickup_fish
+            else:
+                action = self.navigate_to(np.array(self.fish.cur_pos))
+        elif self.date_inside:
+            if Pickup(self).can(self.date):
+                action = self.actions.pickup_date
+            else:
+                action = self.navigate_to(np.array(self.date.cur_pos))
+        elif self.sink in fwd_cell[0]:  # refrig should be in all three dimensions, sink is just in the first dimension
+            if self.fish_inhand:
+                action = self.actions.drop_fish
+            elif self.date_inhand:
+                action = self.actions.drop_date
+            elif self.olive_inhand:
+                action = self.actions.drop_olive
+            else:
+                # We're done, navigate randomly
+                action = self.sample_nav_action()
+        else:
+            action = self.navigate_to(np.array(self.sink.cur_pos))
 
-        # if not self.frig_open and Open(self).can(self.electric_refrigerator):
-        #     action = self.actions.open
-        # # if any of the objects is still in frig (Ok the agent is going to get blocked by frig...)
-        # elif
-        # elif self.printer_inhandofrobot:
-        #     if self.table in fwd_cell[1]:
-        #         action = 4  # drop
-        #     else:
-        #         action = self.sample_nav_action()
-        #         action = self.navigate_to(np.array(self.electric_refrigerator.cur_pos), np.array(self.agent_pos), self.agent_dir)
-        #
-        # elif not self.printer_ontop_table and Pickup(self).can(self.printer):
-        #     action = 3
-        #
-        # else:
-        #     action = self.sample_nav_action()
-        #
-        # return action
+        return action
 
     def gen_obs(self):
         self.date = self.objs['date'][0]
