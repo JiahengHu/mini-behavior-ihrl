@@ -225,14 +225,6 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
 
         return obs, reward, done, {}
 
-    def _reward(self):
-        if self._end_conditions():
-            self.reward += 100
-        else:
-            self.reward -= 1
-
-        return self.reward
-
 
 register(
     id='MiniGrid-SimpleThawingFrozenFoodEnv-16x16-N2-v0',
