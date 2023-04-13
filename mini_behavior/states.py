@@ -155,22 +155,76 @@ class Sliced(AbilityState):
         self.value = True
 
 
+# class Soaked(AbilityState):
+#     def __init__(self, obj, key):
+#         super(Soaked, self).__init__(obj, key)
+#         self.tools = ['sink', 'teapot']
+#
+#     def _update(self, env):
+#         """
+#         not reversible
+#         True if at any point, the obj is at the same location as a water source that is toggled on
+#         """
+#         for tool_type in self.tools:
+#             for water_source in env.objs.get(tool_type, []):
+#                 if water_source.check_abs_state(env, 'toggleable'):
+#                     if self.obj.check_rel_state(env, water_source, 'atsamelocation'):
+#                         self.value = True
+
+# New Soak, with a continuous state change
 class Soaked(AbilityState):
     def __init__(self, obj, key):
         super(Soaked, self).__init__(obj, key)
         self.tools = ['sink', 'teapot']
+        self.value_max = 5
+        self.value_min = 0
+        self.default_value = 0
 
-    def _update(self, env):
+    def _get_value(self, env):
         """
-        not reversible
-        True if at any point, the obj is at the same location as a water source that is toggled on
+        A level from 0 to 5
         """
+        return self.value
+
+    def _update(self, env=None):
+        # Each step the item is in water, it gets wet
         for tool_type in self.tools:
             for water_source in env.objs.get(tool_type, []):
                 if water_source.check_abs_state(env, 'toggleable'):
                     if self.obj.check_rel_state(env, water_source, 'atsamelocation'):
-                        self.value = True
+                        self.value += 1
+        self.value = np.clip(self.value, self.value_min, self.value_max)
 
+    def get_value(self, *args, **kwargs):
+        return self._get_value(*args, **kwargs)
+
+# This is an added stage that is just for the cleaning a car environment
+# When the rug is used to wipe a stain, it become stained
+# When it is put inside a bucket with a soap, it will gradually get cleaner
+class Cleanness(AbilityState):
+    def __init__(self, obj, key):
+        super(Cleanness, self).__init__(obj, key)
+        self.value_max = 5
+        self.value_min = 0
+        self.default_value = 5
+
+    def _get_value(self, env):
+        """
+        A level from 0 to 5
+        5 is completely clean
+        """
+        return self.value
+
+    def _update(self, env=None):
+        # Each step the item is in water, it gets wet
+        clean_source = env.objs.get("bucket", [])[0]
+        soap = env.objs.get("soap", [])[0]
+        if self.obj.check_rel_state(env, clean_source, 'inside') and soap.check_rel_state(self, clean_source, 'inside'):
+            self.value += 1
+        self.value = np.clip(self.value, self.value_min, self.value_max)
+
+    def get_value(self, *args, **kwargs):
+        return self._get_value(*args, **kwargs)
 
 class Stained(AbilityState):
     def __init__(self, obj, key):
@@ -190,6 +244,10 @@ class Stained(AbilityState):
                 if cleaning_tool.check_abs_state(env, 'soakable'):
                     if self.obj.check_rel_state(env, cleaning_tool, 'atsamelocation'):
                         self.value = False
+                        # In addition, set the rag to "not clean"
+                        if tool_type == "rag":
+                            cleaning_tool.states['cleanness'].set_value(0)
+                        return
 
 
 class ToggledOn(AbilityState):

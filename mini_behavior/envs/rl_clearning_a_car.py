@@ -9,15 +9,16 @@ from mini_behavior.floorplan import *
 from enum import IntEnum
 from gym import spaces
 import math
-from .thawing_frozen_food import ThawingFrozenFoodEnv
+from .cleaning_a_car import CleaningACarEnv
 
 
-# TODO: adapt this to the car clearning task
-class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
+# TODO: fix action and step()
+class SimpleCleaningACarEnv(CleaningACarEnv):
     """
-    Environment in which the agent is instructed to ...
-    This is a wrapper around the original mini-behavior environment where states are represented by category, and
-    actions are converted to integer selection
+    Environment in which the agent is instructed to clean a car
+    This is a wrapper around the original mini-behavior environment where:
+    - states are represented by category, and
+    - actions are converted to integer selection
     """
     class Actions(IntEnum):
         left = 0
@@ -25,11 +26,11 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         forward = 2
         open = 3
         close = 4
-        pickup_fish = 5
-        pickup_olive = 6
-        pickup_date = 7
-        drop_fish = 8
-        drop_olive = 9
+        pickup_rag = 5
+        drop_rag = 6
+        toggle_sink = 7
+        pickup_soap = 8
+        drop_soap = 9
         drop_date = 10
 
     def __init__(
@@ -125,43 +126,35 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         return action
 
     def gen_obs(self):
-        self.date = self.objs['date'][0]
-        self.olive = self.objs['olive'][0]
-        self.fish = self.objs['fish'][0]
-        self.electric_refrigerator = self.objs['electric_refrigerator'][0]
+
+        self.car = self.objs['car'][0]
+        self.rag = self.objs['rag'][0]
+        self.shelf = self.objs['shelf'][0]
+        self.soap = self.objs['soap'][0]
+        self.bucket = self.objs['bucket'][0]
         self.sink = self.objs['sink'][0]
+        # The state that we need:
+        # Car: Do you need openable? Why would you want to open the car?
+        self.car_stain = int(self.car.check_abs_state(self, 'stainable'))
+        # rag: soak, cleaness, {inside (bucket), onTop (of car), inhand}?
+        self.rag_soak = int(self.rag.check_abs_state(self, 'soakable'))
+        self.rag_cleanness = int(self.rag.check_abs_state(self, 'cleanness'))
+        self.sink_toggled = int(self.sink.check_abs_state(self, 'toggleable'))
 
-        # The state that we need: open / close, frozen / not & in hand & nextTo & inside (x3) [Thats it]
-        self.olive_frozen = int(self.olive.check_abs_state(self, 'freezable'))
-        self.olive_inhand = int(self.olive.check_abs_state(self, 'inhandofrobot'))
-        self.olive_inside = int(self.olive.check_rel_state(self, self.electric_refrigerator, 'inside'))
-        self.olive_nextto = int(self.olive.check_rel_state(self, self.sink, 'nextto'))
-
-        self.fish_frozen = int(self.fish.check_abs_state(self, 'freezable'))
-        self.fish_inhand = int(self.fish.check_abs_state(self, 'inhandofrobot'))
-        self.fish_inside = int(self.fish.check_rel_state(self, self.electric_refrigerator, 'inside'))
-        self.fish_nextto = int(self.fish.check_rel_state(self, self.sink, 'nextto'))
-
-        self.date_frozen = int(self.date.check_abs_state(self, 'freezable'))
-        self.date_inhand = int(self.date.check_abs_state(self, 'inhandofrobot'))
-        self.date_inside = int(self.date.check_rel_state(self, self.electric_refrigerator, 'inside'))
-        self.date_nextto = int(self.date.check_rel_state(self, self.sink, 'nextto'))
-
-        self.frig_open = int(self.electric_refrigerator.check_abs_state(self, 'openable'))
 
 
         obs = {
             "agent_pos": np.array(self.agent_pos),
             "agent_dir": self.agent_dir,
-            "fish_pos": np.array(self.fish.cur_pos),
-            "fish_state": np.array([self.fish_frozen, self.fish_inhand, self.fish_inside, self.fish_nextto]),
-            "olive_pos": np.array(self.olive.cur_pos),
-            "olive_state": np.array([self.olive_frozen, self.olive_inhand, self.olive_inside, self.olive_nextto]),
-            "date_pos": np.array(self.date.cur_pos),
-            "date_state": np.array([self.date_frozen, self.date_inhand, self.date_inside, self.date_nextto]),
-            "sink_pos": np.array(self.sink.cur_pos),
-            "frig_pos": np.array(self.electric_refrigerator.cur_pos),
-            "frig_state": np.array([self.frig_open])
+            "car_pos": np.array(self.car.cur_pos),
+            "car_state": np.array([self.car_stain]),
+            "bucket_pos": np.array(self.bucket.cur_pos),
+            "soap_pos": np.array([self.soap.cur_pos]),
+            "sink_pos": np.array(self.date.cur_pos),
+            "sink_state": np.array([self.sink_toggled]),
+            "bucket_pos": np.array(self.bucket.cur_pos),
+            "rag_pos": np.array(self.rag.cur_pos),
+            "rag_state": np.array([self.rag_soak, self.rag_cleanness])
         }
 
         return obs
@@ -227,12 +220,12 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
 
 
 register(
-    id='MiniGrid-SimpleThawingFrozenFoodEnv-16x16-N2-v0',
+    id='MiniGrid-SimpleCleaningACarEnv-16x16-N2-v0',
     entry_point='mini_behavior.envs:SimpleThawingFrozenFoodEnv'
 )
 
 register(
-    id='MiniGrid-SimpleThawingFrozenFoodEnv-8x8-N2-v0',
+    id='MiniGrid-SimpleCleaningACarEnv-8x8-N2-v0',
     entry_point='mini_behavior.envs:SimpleThawingFrozenFoodEnv',
     kwargs={'room_size': 8}
 )

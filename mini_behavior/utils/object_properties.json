@@ -261,7 +261,8 @@
     "rag": [
         "cleaningTool",
         "soakable",
-        "stainable"
+        "stainable",
+        "cleanness"
     ],
     "salad": [
         "cookable",

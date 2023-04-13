@@ -428,6 +428,15 @@ class MiniBehaviorEnv(MiniGridEnv):
     def all_reachable(self):
         return [obj for obj in self.obj_instances.values() if obj.check_abs_state(self, 'inreachofrobot')]
 
+    def _reward(self):
+        """
+        So that chidren classes don't have to define sparse reward anymore
+        """
+        if self._end_conditions():
+            return 1
+        else:
+            return 0
+
     def update_states(self):
         for obj in self.obj_instances.values():
             for name, state in obj.states.items():

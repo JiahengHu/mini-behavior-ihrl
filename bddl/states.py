@@ -80,7 +80,8 @@ STATE_FUNC_MAPPING = {
     'stainable': Stained,
     'toggleable': ToggledOn,
     'under': Under,
-    'waterSource': WaterSource
+    'waterSource': WaterSource,
+    'cleanness': Cleanness
     # 'touching', TODO: uncomment once implemented
 }
 

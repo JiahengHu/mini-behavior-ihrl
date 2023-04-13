@@ -46,10 +46,10 @@ class CleaningACarEnv(RoomGrid):
         self.put_obj(soap, *soap_pos, 2)
 
         # rag not soaked
-        rag.states['soakable'].set_value(False)
+        rag.states['soakable'].set_value(0)
 
         # dusty car
-        car.states['dustyable'].set_value(True)
+        car.states['stainable'].set_value(True)
 
     def _init_conditions(self):
         for obj_type in ['car', 'rag', 'shelf', 'soap', 'bucket', 'sink']:
@@ -63,15 +63,18 @@ class CleaningACarEnv(RoomGrid):
 
         assert car.check_abs_state(self, 'onfloor')
         assert rag.check_rel_state(self, shelf, 'onTop')
-        assert not rag.check_abs_state(self, 'soakable')
+        assert rag.check_abs_state(self, 'soakable') == 0
         assert soap.check_rel_state(self, soap, 'onTop')
-        assert car.check_abs_state(self, 'dustyable')
+        assert car.check_abs_state(self, 'stainable')
         assert bucket.check_abs_state(self, 'onfloor')
 
         return True
 
     def _reward(self):
-        return 0
+        if self._end_conditions():
+            return 1
+        else:
+            return 0
 
     def _end_conditions(self):
         car = self.objs['car'][0]
@@ -79,7 +82,9 @@ class CleaningACarEnv(RoomGrid):
         soap = self.objs['soap'][0]
         bucket = self.objs['bucket'][0]
 
-        if not car.check_abs_state(self, 'dustyable') and soap.check_rel_state(self, bucket, 'inside') and rag.check_rel_state(self, bucket, 'inside'):
+        # Criteria: car and rag both clean
+        if not car.check_abs_state(self, 'stainable') \
+                and rag.check_abs_state(self, 'cleanness') == 5:
             return True
         else:
             return False
