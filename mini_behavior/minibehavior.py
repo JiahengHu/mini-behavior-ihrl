@@ -511,7 +511,7 @@ class MiniBehaviorEnv(MiniGridEnv):
     #### For scripted policies  ####
     ################################
     def sample_nav_action(self):
-        return self.np_random.choice(3, p=[0.25, 0.25, 0.5])  # navigation
+        return self.np_random.choice([self.actions.left, self.actions.right, self.actions.forward])  # navigation
 
     def check_forward(self, cur):
         """

@@ -36,7 +36,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             room_size=16,
             num_rows=1,
             num_cols=1,
-            max_steps=200,
+            max_steps=300,
     ):
         self.room_size = room_size
 
@@ -53,6 +53,18 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         self.action_dim = len(self.actions)
 
         self.reward_range = (-math.inf, math.inf)
+        self.init_stage_checkpoint()
+
+    def init_stage_checkpoint(self):
+        """
+        These values are used for keeping track of partial completion reward
+        """
+        self.stage_checkpoints = {"rag_soaked": False, "car_not_stain": False}
+
+    def reset(self):
+        obs = super().reset()
+        self.init_stage_checkpoint()
+        return obs
 
     def get_observation_dims(self):
         return {
@@ -65,7 +77,8 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             "sink_pos": np.array([self.room_size, self.room_size]),
             "sink_state": np.array([2]),
             "rag_pos": np.array([self.room_size, self.room_size]),
-            "rag_state": np.array([6, 6])
+            "rag_state": np.array([6, 6]),
+            "step_count": np.array([1])
         }
 
 
@@ -124,6 +137,20 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
 
         return action
 
+    def _reward(self):
+        if not self.stage_checkpoints["rag_soaked"]:
+            if self.rag_soak == 5:
+                self.stage_checkpoints["rag_soaked"] = True
+                return 1
+        if not self.stage_checkpoints["car_not_stain"]:
+            if not self.car_stain:
+                self.stage_checkpoints["car_not_stain"] = True
+                return 1
+        if self._end_conditions():
+            return 1
+        else:
+            return 0
+
     def gen_obs(self):
 
         self.car = self.objs['car'][0]
@@ -132,14 +159,10 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         self.soap = self.objs['soap'][0]
         self.bucket = self.objs['bucket'][0]
         self.sink = self.objs['sink'][0]
-        # The state that we need:
-        # Car: Do you need openable? Why would you want to open the car?
         self.car_stain = int(self.car.check_abs_state(self, 'stainable'))
-        # rag: soak, cleaness, {inside (bucket), onTop (of car), inhand}?
         self.rag_soak = int(self.rag.check_abs_state(self, 'soakable'))
         self.rag_cleanness = int(self.rag.check_abs_state(self, 'cleanness'))
         self.sink_toggled = int(self.sink.check_abs_state(self, 'toggleable'))
-
 
 
         obs = {
@@ -152,7 +175,8 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             "sink_pos": np.array(self.sink.cur_pos),
             "sink_state": np.array([self.sink_toggled]),
             "rag_pos": np.array(self.rag.cur_pos),
-            "rag_state": np.array([self.rag_soak, self.rag_cleanness])
+            "rag_state": np.array([self.rag_soak, self.rag_cleanness]),
+            "step_count": float(self.step_count) / self.max_steps
         }
 
         return obs

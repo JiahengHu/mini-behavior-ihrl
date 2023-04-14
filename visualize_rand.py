@@ -71,6 +71,7 @@ for episode in range(args.episodes):
         # print(env.last_action.name)
         print(action)
         print(obs)
+        print(f"reward: {reward}\n")
 
         if done or env.window.closed:
             print("episode done")

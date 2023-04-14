@@ -33,7 +33,7 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
             room_size=16,
             num_rows=1,
             num_cols=1,
-            max_steps=50,
+            max_steps=200,
     ):
         self.room_size=room_size
 
@@ -50,20 +50,47 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         self.action_dim = len(self.actions)
 
         self.reward_range = (-math.inf, math.inf)
+        self.init_stage_checkpoint()
+
+    def init_stage_checkpoint(self):
+        """
+        These values are used for keeping track of partial completion reward
+        """
+        self.stage_checkpoints = {"printer_toggled": False, "printer_inhand": False}
+
+    def reset(self):
+        obs = super().reset()
+        self.init_stage_checkpoint()
+        return obs
+
+    def _reward(self):
+        if not self.stage_checkpoints["printer_toggled"]:
+            if self.printer_toggledon:
+                self.stage_checkpoints["printer_toggled"] = True
+                return 1
+        if not self.stage_checkpoints["printer_inhand"]:
+            if self.printer_inhandofrobot:
+                self.stage_checkpoints["printer_inhand"] = True
+                return 1
+        if self._end_conditions():
+            return 1
+        else:
+            return 0
 
     def get_observation_dims(self):
         return {
             "agent_pos": np.array([self.room_size, self.room_size]),
             "agent_dir": np.array([4]),
             "printer_pos": np.array([self.room_size, self.room_size]),
-            "printer_state": np.array([2, 2, 2]),
-            "table_pos": np.array([self.room_size, self.room_size])
+            "printer_state": np.array([2]),
+            "table_pos": np.array([self.room_size, self.room_size]),
+            "step_count": np.array([1])
         }
 
 
     def generate_action(self):
         # probability of choosing the hand-crafted action
-        prob = 1.0 # 0.8
+        prob = 1.0  # 0.8
         if self.np_random.random() < prob:
             return self.hand_crafted_policy()
         else:
@@ -106,12 +133,15 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         self.printer_ontop_table = printer_ontop_table
         self.printer_toggledon = printer_toggledon
 
+        # Removed , printer_ontop_table, printer_inhandofrobot
+
         obs = {
             "agent_pos": np.array(self.agent_pos),
             "agent_dir": self.agent_dir,
             "printer_pos": np.array(self.printer.cur_pos),
-            "printer_state": np.array([printer_inhandofrobot, printer_ontop_table, printer_toggledon]),
-            "table_pos": np.array(self.table.cur_pos)
+            "printer_state": np.array([printer_toggledon]),
+            "table_pos": np.array(self.table.cur_pos),
+            "step_count": float(self.step_count) / self.max_steps
         }
 
         return obs
@@ -171,13 +201,6 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
 
         return obs, reward, done, {}
 
-    def _reward(self):
-        if self._end_conditions():
-            self.reward += 100
-        else:
-            self.reward -= 1
-
-        return self.reward
 
 
 register(
