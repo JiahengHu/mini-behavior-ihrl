@@ -53,6 +53,7 @@ ABILITIES = [
     'soakable',
     'stainable',
     'toggleable',
+    'cleanness'
 ]
 
 

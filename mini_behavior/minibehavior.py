@@ -7,6 +7,7 @@ from gym import spaces
 from gym_minigrid.minigrid import MiniGridEnv
 from gym_minigrid.minigrid import DIR_TO_VEC
 from bddl.actions import ACTION_FUNC_MAPPING
+from mini_behavior.actions import Pickup, Drop, Toggle, Open, Close
 from .objects import *
 from .grid import BehaviorGrid, GridDimension, is_obj
 from mini_behavior.window import Window
@@ -537,8 +538,8 @@ class MiniBehaviorEnv(MiniGridEnv):
         return self.check_empty(right_cell), right_grid
 
     def navigate_to(self, target):
-        # This may get stuck
         # Minigrid has a weird coordinate system, where the y axis is pointing down
+        # There's a small bug with this navigation: if the target is in the opposite direction, it won't turn back until hitting an obstacle
 
         cur = np.array(self.agent_pos)
         dir = self.agent_dir
@@ -547,7 +548,6 @@ class MiniBehaviorEnv(MiniGridEnv):
         can_forward, forward_grid = self.check_forward(cur)
         can_left, left_grid = self.check_left(cur)
         can_right, right_grid = self.check_right(cur)
-        # print(f"forward, left, right, {can_forward, can_left, can_right}")
 
         # When arrived, stop
         if np.all(forward_grid == target):
@@ -612,6 +612,26 @@ class MiniBehaviorEnv(MiniGridEnv):
             else:
                 return take_some_valid_action()
 
+    def go_drop(self, target, fwd_cell, dim, drop_action):
+        if target in fwd_cell[dim]:
+            action = drop_action
+        else:
+            action = self.navigate_to(target.cur_pos)
+        return action
+
+    def go_pickup(self, target, pickup_action):
+        if Pickup(self).can(target):
+            action = pickup_action
+        else:
+            action = self.navigate_to(target.cur_pos)
+        return action
+
+    def go_toggle(self, target, toggle_action):
+        if Toggle(self).can(target):
+            action = toggle_action
+        else:
+            action = self.navigate_to(target.cur_pos)
+        return action
 
     def check_empty(self, cell):
         """

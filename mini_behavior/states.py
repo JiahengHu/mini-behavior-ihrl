@@ -216,10 +216,10 @@ class Cleanness(AbilityState):
         return self.value
 
     def _update(self, env=None):
-        # Each step the item is in water, it gets wet
         clean_source = env.objs.get("bucket", [])[0]
         soap = env.objs.get("soap", [])[0]
-        if self.obj.check_rel_state(env, clean_source, 'inside') and soap.check_rel_state(self, clean_source, 'inside'):
+
+        if self.obj.check_rel_state(env, clean_source, 'atsamelocation') and soap.check_rel_state(self, clean_source, 'atsamelocation'):
             self.value += 1
         self.value = np.clip(self.value, self.value_min, self.value_max)
 
@@ -239,15 +239,16 @@ class Stained(AbilityState):
         not reversible
         False if at any point, the obj is at the same location as a soaked cleaning tool
         """
-        for tool_type in self.tools:
-            for cleaning_tool in env.objs.get(tool_type, []):
-                if cleaning_tool.check_abs_state(env, 'soakable'):
-                    if self.obj.check_rel_state(env, cleaning_tool, 'atsamelocation'):
-                        self.value = False
-                        # In addition, set the rag to "not clean"
-                        if tool_type == "rag":
-                            cleaning_tool.states['cleanness'].set_value(0)
-                        return
+        if self.value == True:
+            for tool_type in self.tools:
+                for cleaning_tool in env.objs.get(tool_type, []):
+                    if cleaning_tool.check_abs_state(env, 'soakable'):
+                        if self.obj.check_rel_state(env, cleaning_tool, 'atsamelocation'):
+                            self.value = False
+                            # In addition, set the rag to "not clean"
+                            if tool_type == "rag":
+                                cleaning_tool.states['cleanness'].set_value(0)
+                            return
 
 
 class ToggledOn(AbilityState):

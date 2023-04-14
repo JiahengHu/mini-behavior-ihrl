@@ -7,6 +7,8 @@
 2. MiniGrid-SimpleInstallingAPrinter-8x8-N2-v0
 3. MiniGrid-SimpleThawingFrozenFoodEnv-16x16-N2-v0
 4. MiniGrid-SimpleThawingFrozenFoodEnv-8x8-N2-v0
+5. MiniGrid-SimpleCleaningACarEnv-16x16-N2-v0
+6. MiniGrid-SimpleCleaningACarEnv-8x8-N2-v0
 
 * To collect data:
 ```buildoutcfg

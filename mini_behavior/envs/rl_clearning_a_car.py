@@ -12,7 +12,6 @@ import math
 from .cleaning_a_car import CleaningACarEnv
 
 
-# TODO: fix action and step()
 class SimpleCleaningACarEnv(CleaningACarEnv):
     """
     Environment in which the agent is instructed to clean a car
@@ -24,14 +23,12 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         left = 0
         right = 1
         forward = 2
-        open = 3
-        close = 4
+        pickup_soap = 3
+        drop_soap = 4
         pickup_rag = 5
-        drop_rag = 6
+        drop_rag = 6 # Do we differentiate between drop and drop-in?
         toggle_sink = 7
-        pickup_soap = 8
-        drop_soap = 9
-        drop_date = 10
+
 
     def __init__(
             self,
@@ -39,7 +36,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             room_size=16,
             num_rows=1,
             num_cols=1,
-            max_steps=100,
+            max_steps=200,
     ):
         self.room_size = room_size
 
@@ -51,7 +48,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
                          )
 
         # We redefine action space here
-        self.actions = SimpleThawingFrozenFoodEnv.Actions
+        self.actions = SimpleCleaningACarEnv.Actions
         self.action_space = spaces.Discrete(len(self.actions))
         self.action_dim = len(self.actions)
 
@@ -61,15 +58,14 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         return {
             "agent_pos": np.array([self.room_size, self.room_size]),
             "agent_dir": np.array([4]),
-            "fish_pos": np.array([self.room_size, self.room_size]),
-            "fish_state": np.array([6, 2, 2, 2]),
-            "olive_pos": np.array([self.room_size, self.room_size]),
-            "olive_state": np.array([6, 2, 2, 2]),
-            "date_pos": np.array([self.room_size, self.room_size]),
-            "date_state": np.array([6, 2, 2, 2]),
+            "car_pos": np.array([self.room_size, self.room_size]),
+            "car_state": np.array([2]),
+            "bucket_pos": np.array([self.room_size, self.room_size]),
+            "soap_pos": np.array([self.room_size, self.room_size]),
             "sink_pos": np.array([self.room_size, self.room_size]),
-            "frig_pos": np.array([self.room_size, self.room_size]),
-            "frig_state": np.array([2])
+            "sink_state": np.array([2]),
+            "rag_pos": np.array([self.room_size, self.room_size]),
+            "rag_state": np.array([6, 6])
         }
 
 
@@ -91,37 +87,40 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         # Get the contents of the cell in front of the agent
         fwd_cell = self.grid.get(*fwd_pos)
 
-        # Open the frig
-        if not self.frig_open and Open(self).can(self.electric_refrigerator):
-            action = self.actions.open
-        # If any one of the object is in frig, we go to the frig and pick it up
-        elif self.olive_inside:
-            if Pickup(self).can(self.olive):
-                action = self.actions.pickup_olive
+
+        if self.car_stain:
+            if self.rag.check_abs_state(self, 'inhandofrobot'):
+                if self.rag_soak != 5:
+                    action = self.go_drop(self.sink, fwd_cell, 0, self.actions.drop_rag)
+                else:
+                    action = self.go_drop(self.car, fwd_cell, 0, self.actions.drop_rag)
+            elif self.rag.check_rel_state(self, self.sink, "atsamelocation"):
+                if not self.sink_toggled:
+                    action = self.go_toggle(self.sink, self.actions.toggle_sink)
+                elif self.rag_soak != 5:
+                    action = self.sample_nav_action()
+                else:
+                    action = self.go_pickup(self.rag, self.actions.pickup_rag)
             else:
-                action = self.navigate_to(np.array(self.olive.cur_pos))
-        elif self.fish_inside:
-            if Pickup(self).can(self.fish):
-                action = self.actions.pickup_fish
-            else:
-                action = self.navigate_to(np.array(self.fish.cur_pos))
-        elif self.date_inside:
-            if Pickup(self).can(self.date):
-                action = self.actions.pickup_date
-            else:
-                action = self.navigate_to(np.array(self.date.cur_pos))
-        elif self.sink in fwd_cell[0]:  # refrig should be in all three dimensions, sink is just in the first dimension
-            if self.fish_inhand:
-                action = self.actions.drop_fish
-            elif self.date_inhand:
-                action = self.actions.drop_date
-            elif self.olive_inhand:
-                action = self.actions.drop_olive
-            else:
-                # We're done, navigate randomly
-                action = self.sample_nav_action()
+                action = self.go_pickup(self.rag, self.actions.pickup_rag)
         else:
-            action = self.navigate_to(np.array(self.sink.cur_pos))
+            rag_in_bucket = self.rag.check_rel_state(self, self.bucket, "atsamelocation")
+            soap_in_bucket = self.soap.check_rel_state(self, self.bucket, "atsamelocation")
+            if rag_in_bucket and soap_in_bucket:
+                action = self.sample_nav_action()
+            elif not soap_in_bucket:
+                if self.soap.check_abs_state(self, 'inhandofrobot'):
+                    action = self.go_drop(self.bucket, fwd_cell, 0, self.actions.drop_soap)
+                else:
+                    action = self.go_pickup(self.soap, self.actions.pickup_soap)
+            elif not rag_in_bucket:
+                if self.rag.check_abs_state(self, 'inhandofrobot'):
+                    action = self.go_drop(self.bucket, fwd_cell, 0, self.actions.drop_rag)
+                else:
+                    action = self.go_pickup(self.rag, self.actions.pickup_rag)
+            else:
+                print("reaching here is impossible")
+                raise NotImplementedError
 
         return action
 
@@ -150,9 +149,8 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             "car_state": np.array([self.car_stain]),
             "bucket_pos": np.array(self.bucket.cur_pos),
             "soap_pos": np.array([self.soap.cur_pos]),
-            "sink_pos": np.array(self.date.cur_pos),
+            "sink_pos": np.array(self.sink.cur_pos),
             "sink_state": np.array([self.sink_toggled]),
-            "bucket_pos": np.array(self.bucket.cur_pos),
             "rag_pos": np.array(self.rag.cur_pos),
             "rag_state": np.array([self.rag_soak, self.rag_cleanness])
         }
@@ -185,31 +183,24 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
                         break
             if can_overlap:
                 self.agent_pos = fwd_pos
-        elif action == self.actions.pickup_date:
-            if Pickup(self).can(self.date):
-                Pickup(self).do(self.date)
-        elif action == self.actions.pickup_olive:
-            if Pickup(self).can(self.olive):
-                Pickup(self).do(self.olive)
-        elif action == self.actions.pickup_fish:
-            if Pickup(self).can(self.fish):
-                Pickup(self).do(self.fish)
-        # Drop dimension: 2 is the top
-        elif action == self.actions.drop_date:
-            if Drop(self).can(self.date):
-                Drop(self).do(self.date, 2)
-        elif action == self.actions.drop_olive:
-            if Drop(self).can(self.olive):
-                Drop(self).do(self.olive, 2)
-        elif action == self.actions.drop_fish:
-            if Drop(self).can(self.fish):
-                Drop(self).do(self.fish, 2)
-        elif action == self.actions.open:
-            if Open(self).can(self.electric_refrigerator):
-                Open(self).do(self.electric_refrigerator)
-        elif action == self.actions.close:
-            if Close(self).can(self.electric_refrigerator):
-                Close(self).do(self.electric_refrigerator)
+        elif action == self.actions.pickup_rag:
+            if Pickup(self).can(self.rag):
+                Pickup(self).do(self.rag)
+        elif action == self.actions.pickup_soap:
+            if Pickup(self).can(self.soap):
+                Pickup(self).do(self.soap)
+        elif action == self.actions.toggle_sink:
+            if Toggle(self).can(self.sink):
+                Toggle(self).do(self.sink)
+        elif action == self.actions.drop_rag:
+            if Drop(self).can(self.rag):
+                Drop(self).do(self.rag, 0)
+        elif action == self.actions.drop_soap:
+            if Drop(self).can(self.soap):
+                Drop(self).do(self.soap, 1)
+        else:
+            print(action)
+            raise NotImplementedError
 
         self.update_states()
         reward = self._reward()
@@ -221,11 +212,11 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
 
 register(
     id='MiniGrid-SimpleCleaningACarEnv-16x16-N2-v0',
-    entry_point='mini_behavior.envs:SimpleThawingFrozenFoodEnv'
+    entry_point='mini_behavior.envs:SimpleCleaningACarEnv'
 )
 
 register(
     id='MiniGrid-SimpleCleaningACarEnv-8x8-N2-v0',
-    entry_point='mini_behavior.envs:SimpleThawingFrozenFoodEnv',
+    entry_point='mini_behavior.envs:SimpleCleaningACarEnv',
     kwargs={'room_size': 8}
 )
