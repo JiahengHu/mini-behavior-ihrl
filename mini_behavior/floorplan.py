@@ -6,7 +6,7 @@ from mini_behavior.register import register
 from mini_behavior.objects import Wall
 from mini_behavior.utils.scene_to_grid import img_to_array
 
-FLOORPLANS_DIR = os.path.join(os.path.dirname(os.path.abspath(__name__)), "mini_behavior", "floorplans")
+FLOORPLANS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "floorplans")
 
 
 def get_floorplan(scene_id) :
