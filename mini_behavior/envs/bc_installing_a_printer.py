@@ -77,7 +77,7 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         else:
             return 0
 
-    def get_observation_dims(self):
+    def observation_dims(self):
         return {
             "agent_pos": np.array([self.room_size, self.room_size]),
             "agent_dir": np.array([4]),
@@ -86,7 +86,6 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
             "table_pos": np.array([self.room_size, self.room_size]),
             "step_count": np.array([1])
         }
-
 
     def generate_action(self):
         # probability of choosing the hand-crafted action
@@ -137,11 +136,11 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
 
         obs = {
             "agent_pos": np.array(self.agent_pos),
-            "agent_dir": self.agent_dir,
+            "agent_dir": np.array([self.agent_dir]),
             "printer_pos": np.array(self.printer.cur_pos),
             "printer_state": np.array([printer_toggledon]),
             "table_pos": np.array(self.table.cur_pos),
-            "step_count": float(self.step_count) / self.max_steps
+            "step_count": np.array([float(self.step_count) / self.max_steps])
         }
 
         return obs
@@ -157,6 +156,9 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         printer_pos = np.random.randint(1, self.room_size-1, size=2)
         self.put_obj(table, *table_pos, 0)
         self.put_obj(printer, *printer_pos, 0)
+
+    def check_success(self):
+        return False
 
     def step(self, action):
         self.step_count += 1
@@ -198,20 +200,15 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         reward = self._reward()
         done = self._end_conditions() or self.step_count >= self.max_steps
         obs = self.gen_obs()
+        info = {"success": self.check_success()}
 
-        return obs, reward, done, {}
+        return obs, reward, done, info
 
 
 
 register(
-    id='MiniGrid-SimpleInstallingAPrinter-16x16-N2-v0',
+    id='MiniGrid-installing_printer-v0',
     entry_point='mini_behavior.envs:SimpleInstallingAPrinterEnv'
-)
-
-register(
-    id='MiniGrid-SimpleInstallingAPrinter-8x8-N2-v0',
-    entry_point='mini_behavior.envs:SimpleInstallingAPrinterEnv',
-    kwargs={'room_size': 8}
 )
 
 

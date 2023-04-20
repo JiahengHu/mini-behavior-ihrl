@@ -66,7 +66,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         self.init_stage_checkpoint()
         return obs
 
-    def get_observation_dims(self):
+    def observation_dims(self):
         return {
             "agent_pos": np.array([self.room_size, self.room_size]),
             "agent_dir": np.array([4]),
@@ -80,7 +80,6 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             "rag_state": np.array([6, 6]),
             "step_count": np.array([1])
         }
-
 
     def generate_action(self):
         # probability of choosing the hand-crafted action
@@ -167,19 +166,22 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
 
         obs = {
             "agent_pos": np.array(self.agent_pos),
-            "agent_dir": self.agent_dir,
+            "agent_dir": np.array([self.agent_dir]),
             "car_pos": np.array(self.car.cur_pos),
             "car_state": np.array([self.car_stain]),
             "bucket_pos": np.array(self.bucket.cur_pos),
-            "soap_pos": np.array([self.soap.cur_pos]),
+            "soap_pos": np.array(self.soap.cur_pos),
             "sink_pos": np.array(self.sink.cur_pos),
             "sink_state": np.array([self.sink_toggled]),
             "rag_pos": np.array(self.rag.cur_pos),
             "rag_state": np.array([self.rag_soak, self.rag_cleanness]),
-            "step_count": float(self.step_count) / self.max_steps
+            "step_count": np.array([float(self.step_count) / self.max_steps])
         }
 
         return obs
+
+    def check_success(self):
+        return False
 
     def step(self, action):
         self.step_count += 1
@@ -230,17 +232,12 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         reward = self._reward()
         done = self._end_conditions() or self.step_count >= self.max_steps
         obs = self.gen_obs()
+        info = {"success": self.check_success()}
 
-        return obs, reward, done, {}
+        return obs, reward, done, info
 
 
 register(
-    id='MiniGrid-SimpleCleaningACarEnv-16x16-N2-v0',
+    id='MiniGrid-clearning_car-v0',
     entry_point='mini_behavior.envs:SimpleCleaningACarEnv'
-)
-
-register(
-    id='MiniGrid-SimpleCleaningACarEnv-8x8-N2-v0',
-    entry_point='mini_behavior.envs:SimpleCleaningACarEnv',
-    kwargs={'room_size': 8}
 )

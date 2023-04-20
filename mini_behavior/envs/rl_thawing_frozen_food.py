@@ -90,7 +90,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         self.init_stage_checkpoint()
         return obs
 
-    def get_observation_dims(self):
+    def observation_dims(self):
         return {
             "agent_pos": np.array([self.room_size, self.room_size]),
             "agent_dir": np.array([4]),
@@ -105,7 +105,6 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             "frig_state": np.array([2]),
             "step_count": np.array([1])
         }
-
 
     def generate_action(self):
         # probability of choosing the hand-crafted action
@@ -189,7 +188,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
 
         obs = {
             "agent_pos": np.array(self.agent_pos),
-            "agent_dir": self.agent_dir,
+            "agent_dir": np.array([self.agent_dir]),
             "fish_pos": np.array(self.fish.cur_pos),
             "fish_state": np.array([self.fish_frozen]),
             "olive_pos": np.array(self.olive.cur_pos),
@@ -199,10 +198,13 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             "sink_pos": np.array(self.sink.cur_pos),
             "frig_pos": np.array(self.electric_refrigerator.cur_pos),
             "frig_state": np.array([self.frig_open]),
-            "step_count": float(self.step_count) / self.max_steps
+            "step_count": np.array([float(self.step_count) / self.max_steps])
         }
 
         return obs
+
+    def check_success(self):
+        return False
 
     def step(self, action):
         self.step_count += 1
@@ -260,17 +262,12 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         reward = self._reward()
         done = self._end_conditions() or self.step_count >= self.max_steps
         obs = self.gen_obs()
+        info = {"success": self.check_success()}
 
-        return obs, reward, done, {}
+        return obs, reward, done, info
 
 
 register(
-    id='MiniGrid-SimpleThawingFrozenFoodEnv-16x16-N2-v0',
+    id='MiniGrid-thawing-v0',
     entry_point='mini_behavior.envs:SimpleThawingFrozenFoodEnv'
-)
-
-register(
-    id='MiniGrid-SimpleThawingFrozenFoodEnv-8x8-N2-v0',
-    entry_point='mini_behavior.envs:SimpleThawingFrozenFoodEnv',
-    kwargs={'room_size': 8}
 )
