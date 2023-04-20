@@ -3,7 +3,7 @@ from mini_behavior.register import register
 from mini_behavior.grid import is_obj
 from mini_behavior.actions import Pickup, Drop, Toggle, Open, Close
 from mini_behavior.objects import Wall
-from bddl import ACTION_FUNC_MAPPING
+from mini_bddl import ACTION_FUNC_MAPPING
 from mini_behavior.floorplan import *
 
 from enum import IntEnum
@@ -204,7 +204,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         return obs
 
     def check_success(self):
-        return False
+        return self._end_conditions()
 
     def step(self, action):
         self.step_count += 1
@@ -243,14 +243,20 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                 Pickup(self).do(self.fish)
         # Drop dimension: 2 is the top
         elif action == self.actions.drop_date:
-            if Drop(self).can(self.date):
-                Drop(self).do(self.date, 2)
+            obj = self.date
+            if Drop(self).can(obj):
+                drop_dim = obj.available_dims
+                Drop(self).do(obj, np.random.choice(drop_dim))
         elif action == self.actions.drop_olive:
-            if Drop(self).can(self.olive):
-                Drop(self).do(self.olive, 2)
+            obj = self.olive
+            if Drop(self).can(obj):
+                drop_dim = obj.available_dims
+                Drop(self).do(obj, np.random.choice(drop_dim))
         elif action == self.actions.drop_fish:
-            if Drop(self).can(self.fish):
-                Drop(self).do(self.fish, 2)
+            obj = self.fish
+            if Drop(self).can(obj):
+                drop_dim = obj.available_dims
+                Drop(self).do(obj, np.random.choice(drop_dim))
         elif action == self.actions.open:
             if Open(self).can(self.electric_refrigerator):
                 Open(self).do(self.electric_refrigerator)

@@ -6,7 +6,7 @@ from enum import IntEnum
 from gym import spaces
 from gym_minigrid.minigrid import MiniGridEnv
 from gym_minigrid.minigrid import DIR_TO_VEC
-from bddl.actions import ACTION_FUNC_MAPPING
+from mini_bddl.actions import ACTION_FUNC_MAPPING
 from mini_behavior.actions import Pickup, Drop, Toggle, Open, Close
 from .objects import *
 from .grid import BehaviorGrid, GridDimension, is_obj

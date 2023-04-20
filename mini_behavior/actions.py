@@ -103,7 +103,6 @@ class Drop(BaseAction):
 
             last_furniture = furniture
             last_obj = obj
-
         return dims
 
     def can(self, obj):
@@ -120,6 +119,7 @@ class Drop(BaseAction):
 
         fwd_pos = self.env.front_pos
         dims = self.drop_dims(fwd_pos)
+        obj.available_dims = dims
 
         return dims != []
 
@@ -174,6 +174,7 @@ class DropIn(BaseAction):
 
         fwd_pos = self.env.front_pos
         dims = self.drop_dims(fwd_pos)
+        obj.available_dims = dims
         return dims != []
 
     def do(self, obj, dim):

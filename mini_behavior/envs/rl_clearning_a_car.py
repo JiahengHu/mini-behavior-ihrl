@@ -3,7 +3,7 @@ from mini_behavior.register import register
 from mini_behavior.grid import is_obj
 from mini_behavior.actions import Pickup, Drop, Toggle, Open, Close
 from mini_behavior.objects import Wall
-from bddl import ACTION_FUNC_MAPPING
+from mini_bddl import ACTION_FUNC_MAPPING
 from mini_behavior.floorplan import *
 
 from enum import IntEnum
@@ -181,7 +181,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         return obs
 
     def check_success(self):
-        return False
+        return self._end_conditions()
 
     def step(self, action):
         self.step_count += 1
