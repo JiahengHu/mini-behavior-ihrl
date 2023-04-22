@@ -217,11 +217,9 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             if Toggle(self).can(self.sink):
                 Toggle(self).do(self.sink)
         elif action == self.actions.drop_rag:
-            if Drop(self).can(self.rag):
-                Drop(self).do(self.rag, 0)
+            self.drop_rand_dim(self.rag)
         elif action == self.actions.drop_soap:
-            if Drop(self).can(self.soap):
-                Drop(self).do(self.soap, 1)
+            self.drop_rand_dim(self.soap)
         else:
             print(action)
             raise NotImplementedError

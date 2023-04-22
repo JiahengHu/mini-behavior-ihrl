@@ -513,6 +513,12 @@ class MiniBehaviorEnv(MiniGridEnv):
         self.render_dim = dim
         self.grid.render_dim = dim
 
+    # This function make sure that the object is dropped in an available grid; to prevent object overlapping
+    def drop_rand_dim(self, obj):
+        if Drop(self).can(obj):
+            drop_dim = obj.available_dims
+            Drop(self).do(obj, np.random.choice(drop_dim))
+
     ################################
     #### For scripted policies  ####
     ################################

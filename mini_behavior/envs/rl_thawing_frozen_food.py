@@ -90,6 +90,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
     def reset(self):
         obs = super().reset()
         self.init_stage_checkpoint()
+        self.adjusted_sink_pos = np.array(self.sink.cur_pos)
         return obs
 
     def observation_dims(self):
@@ -147,16 +148,28 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                 action = self.navigate_to(np.array(self.date.cur_pos))
         elif self.sink in fwd_cell[0]:  # refrig should be in all three dimensions, sink is just in the first dimension
             if self.fish_inhand:
-                action = self.actions.drop_fish
+                if Drop(self).can(self.fish):
+                    action = self.actions.drop_fish
+                else:
+                    self.adjusted_sink_pos = np.array(self.sink.cur_pos) + np.array([1, 0])
+                    action = self.navigate_to(self.adjusted_sink_pos)
             elif self.date_inhand:
-                action = self.actions.drop_date
+                if Drop(self).can(self.date):
+                    action = self.actions.drop_date
+                else:
+                    self.adjusted_sink_pos = np.array(self.sink.cur_pos) + np.array([1, 0])
+                    action = self.navigate_to(self.adjusted_sink_pos)
             elif self.olive_inhand:
-                action = self.actions.drop_olive
+                if Drop(self).can(self.olive):
+                    action = self.actions.drop_olive
+                else:
+                    self.adjusted_sink_pos = np.array(self.sink.cur_pos) + np.array([1, 0])
+                    action = self.navigate_to(self.adjusted_sink_pos)
             else:
                 # We're done, navigate randomly
                 action = self.sample_nav_action()
         else:
-            action = self.navigate_to(np.array(self.sink.cur_pos))
+            action = self.navigate_to(np.array(self.adjusted_sink_pos))
 
         return action
 
@@ -243,19 +256,13 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         # Drop dimension: 2 is the top
         elif action == self.actions.drop_date:
             obj = self.date
-            if Drop(self).can(obj):
-                drop_dim = obj.available_dims
-                Drop(self).do(obj, np.random.choice(drop_dim))
+            self.drop_rand_dim(obj)
         elif action == self.actions.drop_olive:
             obj = self.olive
-            if Drop(self).can(obj):
-                drop_dim = obj.available_dims
-                Drop(self).do(obj, np.random.choice(drop_dim))
+            self.drop_rand_dim(obj)
         elif action == self.actions.drop_fish:
             obj = self.fish
-            if Drop(self).can(obj):
-                drop_dim = obj.available_dims
-                Drop(self).do(obj, np.random.choice(drop_dim))
+            self.drop_rand_dim(obj)
         elif action == self.actions.open:
             if Open(self).can(self.electric_refrigerator):
                 Open(self).do(self.electric_refrigerator)
