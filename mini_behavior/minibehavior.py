@@ -219,6 +219,10 @@ class MiniBehaviorEnv(MiniGridEnv):
         print('no end conditions')
         return False
 
+    # This function should only be called by RL classes with a stage reward
+    def check_success(self):
+        return self.stage_checkpoints["succeed"]
+
     def place_obj(self,
                   obj,
                   top=None,

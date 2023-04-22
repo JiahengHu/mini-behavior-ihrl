@@ -56,7 +56,7 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         """
         These values are used for keeping track of partial completion reward
         """
-        self.stage_checkpoints = {"printer_toggled": False, "printer_inhand": False}
+        self.stage_checkpoints = {"printer_toggled": False, "printer_inhand": False, "succeed": False}
 
     def reset(self):
         obs = super().reset()
@@ -72,10 +72,11 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
             if self.printer_inhandofrobot:
                 self.stage_checkpoints["printer_inhand"] = True
                 return 1
-        if self._end_conditions():
-            return 1
-        else:
-            return 0
+        if not self.stage_checkpoints["succeed"]:
+            if self._end_conditions():
+                self.stage_checkpoints["succeed"] = True
+                return 1
+        return 0
 
     def observation_dims(self):
         return {
@@ -157,9 +158,6 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         self.put_obj(table, *table_pos, 0)
         self.put_obj(printer, *printer_pos, 0)
 
-    def check_success(self):
-        return self._end_conditions()
-
     def step(self, action):
         self.step_count += 1
         # Get the position and contents in front of the agent
@@ -198,7 +196,8 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
 
         self.update_states()
         reward = self._reward()
-        done = self._end_conditions() or self.step_count >= self.max_steps
+        # done = self._end_conditions() or self.step_count >= self.max_steps
+        done = self.step_count >= self.max_steps
         obs = self.gen_obs()
         info = {"success": self.check_success()}
 

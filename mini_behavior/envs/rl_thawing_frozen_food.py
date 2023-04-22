@@ -61,7 +61,8 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         """
         These values are used for keeping track of partial completion reward
         """
-        self.stage_checkpoints = {"frig_open": False, "date_thaw": False, "fish_thaw": False, "olive_thaw": False}
+        self.stage_checkpoints = {"frig_open": False, "date_thaw": False, "fish_thaw": False,
+                                  "olive_thaw": False, "succeed": False}
 
     def _reward(self):
         if not self.stage_checkpoints["frig_open"]:
@@ -80,10 +81,11 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             if self.olive_frozen == 0:
                 self.stage_checkpoints["olive_thaw"] = True
                 return 1
-        if self._end_conditions():
-            return 1
-        else:
-            return 0
+        if not self.stage_checkpoints["succeed"]:
+            if self._end_conditions():
+                self.stage_checkpoints["succeed"] = True
+                return 1
+        return 0
 
     def reset(self):
         obs = super().reset()
@@ -203,9 +205,6 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
 
         return obs
 
-    def check_success(self):
-        return self._end_conditions()
-
     def step(self, action):
         self.step_count += 1
         # Get the position and contents in front of the agent
@@ -266,7 +265,8 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
 
         self.update_states()
         reward = self._reward()
-        done = self._end_conditions() or self.step_count >= self.max_steps
+        # done = self._end_conditions() or self.step_count >= self.max_steps
+        done = self.step_count >= self.max_steps
         obs = self.gen_obs()
         info = {"success": self.check_success()}
 
