@@ -182,6 +182,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         return obs
 
     def step(self, action):
+        self.update_states()
         self.step_count += 1
         # Get the position and contents in front of the agent
         fwd_pos = self.front_pos
@@ -224,7 +225,6 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             print(action)
             raise NotImplementedError
 
-        self.update_states()
         reward = self._reward()
         # done = self._end_conditions() or self.step_count >= self.max_steps
         done = self.step_count >= self.max_steps
