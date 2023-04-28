@@ -218,56 +218,24 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
 
         return obs
 
-    def step(self, action):
+    def step(self, action, evaluate_mask=True):
+        cur_olive_frozen, cur_fish_frozen, cur_date_frozen = self.olive_frozen, self.fish_frozen, self.date_frozen
+
         self.update_states()
         self.step_count += 1
         # Get the position and contents in front of the agent
         fwd_pos = self.front_pos
         fwd_cell = self.grid.get(*fwd_pos)
 
-        feature_dim = 17
-        mask = np.zeros((feature_dim, feature_dim + 1), dtype=bool)
-        agent_pos_idxes = (0, 1)
-        agent_dir_idx = 2
-        fish_pos_idxes = (3, 4)
-        fish_state_idx = 5
-        olive_pos_idxes = (6, 7)
-        olive_state_idx = 8
-        date_pos_idxes = (9, 10)
-        date_state_idx = 11
-        sink_pos_idxes = (12, 13)
-        frig_pos_idxes = (14, 15)
-        frig_state_idx = 16
-        action_idx = 17
-
-        def extract_obj_pos_idxes(obj_):
-            if obj == self.fish:
-                return fish_pos_idxes
-            elif obj == self.olive:
-                return olive_pos_idxes
-            elif obj == self.date:
-                return date_pos_idxes
-            elif obj == self.sink:
-                return sink_pos_idxes
-            elif obj == self.electric_refrigerator:
-                return frig_pos_idxes
-            else:
-                return None
-
-        pickup_done = False
-        pickup_obj_pos_idxes = None
-        frig_manipulated = False
-        cur_olive_frozen, cur_fish_frozen, cur_date_frozen = self.olive_frozen, self.fish_frozen, self.date_frozen
+        pickup_done = frig_manipulated = False
 
         # Rotate left
         if action == self.actions.left:
             self.agent_dir = (self.agent_dir - 1) % 4
-            mask[agent_dir_idx, action_idx] = True
 
         # Rotate right
         elif action == self.actions.right:
             self.agent_dir = (self.agent_dir + 1) % 4
-            mask[agent_dir_idx, action_idx] = True
 
         # Move forward
         elif action == self.actions.forward:
@@ -277,30 +245,22 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                     if is_obj(obj) and not obj.can_overlap:
                         can_overlap = False
                         break
-            pos_idx = (self.agent_pos != fwd_pos).argmax()
+
             if can_overlap:
                 self.agent_pos = fwd_pos
-                mask[pos_idx, agent_dir_idx] = True
-                mask[pos_idx, action_idx] = True
-            else:
-                mask[pos_idx, agent_pos_idxes] = True
-                mask[pos_idx, agent_dir_idx] = True
-                obj_pos_idxes = extract_obj_pos_idxes(obj)
-                if obj_pos_idxes is not None:
-                    mask[pos_idx, obj_pos_idxes] = True
 
         elif action == self.actions.pickup_date:
             if Pickup(self).can(self.date):
                 Pickup(self).do(self.date)
-                pickup_done, pickup_obj_pos_idxes = True, date_pos_idxes
+                pickup_done, obj = True, self.date
         elif action == self.actions.pickup_olive:
             if Pickup(self).can(self.olive):
                 Pickup(self).do(self.olive)
-                pickup_done, pickup_obj_pos_idxes = True, olive_pos_idxes
+                pickup_done, obj = True, self.olive
         elif action == self.actions.pickup_fish:
             if Pickup(self).can(self.fish):
                 Pickup(self).do(self.fish)
-                pickup_done, pickup_obj_pos_idxes = True, fish_pos_idxes
+                pickup_done, obj = True, self.fish
         # Drop dimension: 2 is the top
         elif action == self.actions.drop_date:
             obj = self.date
@@ -320,45 +280,91 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                 Close(self).do(self.electric_refrigerator)
                 frig_manipulated = True
 
-        if pickup_done:
-            mask[pickup_obj_pos_idxes, agent_pos_idxes] = True
-            mask[pickup_obj_pos_idxes, agent_dir_idx] = True
-            mask[pickup_obj_pos_idxes, pickup_obj_pos_idxes] = True
-            mask[pickup_obj_pos_idxes, action_idx] = True
-
-        if action in [self.actions.drop_date, self.actions.drop_olive, self.actions.drop_fish]:
-            obj_pos_idxes = extract_obj_pos_idxes(obj)
-            mask[obj_pos_idxes, agent_pos_idxes] = True
-            mask[obj_pos_idxes, agent_dir_idx] = True
-            if not obj.check_abs_state(self, 'inhandofrobot'):
-                mask[obj_pos_idxes, action_idx] = True
-
-        if frig_manipulated:
-            mask[frig_state_idx, action_idx] = True
-            mask[frig_state_idx, agent_pos_idxes] = True
-            mask[frig_state_idx, agent_dir_idx] = True
-            mask[frig_state_idx, frig_pos_idxes] = True
-
         reward = self._reward()
         # done = self._end_conditions() or self.step_count >= self.max_steps
         done = self.step_count >= self.max_steps
         obs = self.gen_obs()
+        info = {"success": self.check_success()}
 
-        # update freeze mask
-        for cur_obj_frozen, next_obj_frozen, obj_pos_idxes, obj_state_idx in \
-            [[cur_olive_frozen, self.olive_frozen, olive_pos_idxes, olive_state_idx],
-             [cur_fish_frozen, self.fish_frozen, fish_pos_idxes, fish_state_idx],
-             [cur_date_frozen, self.date_frozen, date_pos_idxes, date_state_idx]
-            ]:
+        if evaluate_mask:
+            feature_dim = 17
+            mask = np.zeros((feature_dim, feature_dim + 1), dtype=bool)
+            agent_pos_idxes = slice(0, 2)
+            agent_dir_idx = 2
+            fish_pos_idxes = slice(3, 5)
+            fish_state_idx = 5
+            olive_pos_idxes = slice(6, 8)
+            olive_state_idx = 8
+            date_pos_idxes = slice(9, 11)
+            date_state_idx = 11
+            sink_pos_idxes = slice(12, 14)
+            frig_pos_idxes = slice(14, 16)
+            frig_state_idx = 16
+            action_idx = 17
 
-            mask[obj_state_idx, obj_pos_idxes] = True
-            if next_obj_frozen > cur_obj_frozen:
-                mask[obj_state_idx, frig_pos_idxes] = True
-            elif next_obj_frozen < cur_obj_frozen:
-                mask[obj_state_idx, sink_pos_idxes] = True
+            def extract_obj_pos_idxes(obj_):
+                if obj == self.fish:
+                    return fish_pos_idxes
+                elif obj == self.olive:
+                    return olive_pos_idxes
+                elif obj == self.date:
+                    return date_pos_idxes
+                elif obj == self.sink:
+                    return sink_pos_idxes
+                elif obj == self.electric_refrigerator:
+                    return frig_pos_idxes
+                else:
+                    return None
 
-        info = {"success": self.check_success(),
-                "local_causality": mask}
+            if action == self.actions.left or action == self.actions.right:
+                mask[agent_dir_idx, action_idx] = True
+
+            # Move forward
+            elif action == self.actions.forward:
+                pos_idx = self.agent_dir % 2
+                if can_overlap:
+                    mask[pos_idx, agent_dir_idx] = True
+                    mask[pos_idx, action_idx] = True
+                else:
+                    mask[pos_idx, agent_pos_idxes] = True
+                    mask[pos_idx, agent_dir_idx] = True
+                    obj_pos_idxes = extract_obj_pos_idxes(obj)
+                    if obj_pos_idxes is not None:
+                        mask[pos_idx, obj_pos_idxes] = True
+
+            if pickup_done:
+                obj_pos_idxes = extract_obj_pos_idxes(obj)
+                mask[obj_pos_idxes, agent_pos_idxes] = True
+                mask[obj_pos_idxes, agent_dir_idx] = True
+                mask[obj_pos_idxes, obj_pos_idxes] = True
+                mask[obj_pos_idxes, action_idx] = True
+
+            if action in [self.actions.drop_date, self.actions.drop_olive, self.actions.drop_fish]:
+                obj_pos_idxes = extract_obj_pos_idxes(obj)
+                mask[obj_pos_idxes, agent_pos_idxes] = True
+                mask[obj_pos_idxes, agent_dir_idx] = True
+                if not obj.check_abs_state(self, 'inhandofrobot'):
+                    mask[obj_pos_idxes, action_idx] = True
+
+            if frig_manipulated:
+                mask[frig_state_idx, action_idx] = True
+                mask[frig_state_idx, agent_pos_idxes] = True
+                mask[frig_state_idx, agent_dir_idx] = True
+                mask[frig_state_idx, frig_pos_idxes] = True
+
+            # update freeze mask
+            for cur_obj_frozen, next_obj_frozen, obj_pos_idxes, obj_state_idx in \
+                [[cur_olive_frozen, self.olive_frozen, olive_pos_idxes, olive_state_idx],
+                 [cur_fish_frozen, self.fish_frozen, fish_pos_idxes, fish_state_idx],
+                 [cur_date_frozen, self.date_frozen, date_pos_idxes, date_state_idx]
+                ]:
+
+                mask[obj_state_idx, obj_pos_idxes] = True
+                if next_obj_frozen > cur_obj_frozen:
+                    mask[obj_state_idx, frig_pos_idxes] = True
+                elif next_obj_frozen < cur_obj_frozen:
+                    mask[obj_state_idx, sink_pos_idxes] = True
+            info["local_causality"] = mask
 
         return obs, reward, done, info
 

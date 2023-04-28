@@ -158,7 +158,7 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         self.put_obj(table, *table_pos, 0)
         self.put_obj(printer, *printer_pos, 0)
 
-    def step(self, action):
+    def step(self, action, evaluate_mask=True):
         self.update_states()
 
         self.step_count += 1
@@ -166,24 +166,15 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         fwd_pos = self.front_pos
         fwd_cell = self.grid.get(*fwd_pos)
 
-        feature_dim = 8
-        mask = np.zeros((feature_dim, feature_dim + 1), dtype=bool)
-        agent_pos_idxes = (0, 1)
-        agent_dir_idx = 2
-        printer_pos_idxes = (3, 4)
-        printer_state_idx = 5
-        table_pos_idxes = (6, 7)
-        action_idx = 8
+        picked = dropped = toggled = False
 
         # Rotate left
         if action == self.actions.left:
             self.agent_dir = (self.agent_dir - 1) % 4
-            mask[agent_dir_idx, action_idx] = True
 
         # Rotate right
         elif action == self.actions.right:
             self.agent_dir = (self.agent_dir + 1) % 4
-            mask[agent_dir_idx, action_idx] = True
 
         # Move forward
         elif action == self.actions.forward:
@@ -194,46 +185,73 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
                         can_overlap = False
                         break
 
-            pos_idx = (self.agent_pos != fwd_pos).argmax()
             if can_overlap:
                 self.agent_pos = fwd_pos
-                mask[pos_idx, agent_dir_idx] = True
-                mask[pos_idx, action_idx] = True
-            else:
-                mask[pos_idx, agent_pos_idxes] = True
-                mask[pos_idx, agent_dir_idx] = True
-                if obj == self.printer:
-                    mask[pos_idx, printer_pos_idxes] = True
-                elif obj == self.table:
-                    mask[pos_idx, table_pos_idxes] = True
         elif action == self.actions.pickup:
             if Pickup(self).can(self.printer):
                 Pickup(self).do(self.printer)
-                mask[printer_pos_idxes, agent_pos_idxes] = True
-                mask[printer_pos_idxes, agent_dir_idx] = True
-                mask[printer_pos_idxes, printer_pos_idxes] = True
-                mask[printer_pos_idxes, action_idx] = True
+                picked = True
         elif action == self.actions.drop:
-            mask[printer_pos_idxes, agent_pos_idxes] = True
-            mask[printer_pos_idxes, agent_dir_idx] = True
             if Drop(self).can(self.printer):
                 Drop(self).do(self.printer, 2)
-                mask[printer_pos_idxes, action_idx] = True
+                dropped = True
         elif action == self.actions.toggle:
             if Toggle(self).can(self.printer):
                 Toggle(self).do(self.printer)
-                mask[printer_state_idx, action_idx] = True
-                if not self.printer_inhandofrobot:
-                    mask[printer_state_idx, agent_pos_idxes] = True
-                    mask[printer_state_idx, agent_dir_idx] = True
-                    mask[printer_state_idx, printer_pos_idxes] = True
+                toggled = True
 
         reward = self._reward()
         # done = self._end_conditions() or self.step_count >= self.max_steps
         done = self.step_count >= self.max_steps
         obs = self.gen_obs()
-        info = {"success": self.check_success(),
-                "local_causality": mask}
+        info = {"success": self.check_success()}
+
+        if evaluate_mask:
+            feature_dim = 8
+            mask = np.zeros((feature_dim, feature_dim + 1), dtype=bool)
+            agent_pos_idxes = slice(0, 2)
+            agent_dir_idx = 2
+            printer_pos_idxes = slice(3, 5)
+            printer_state_idx = 5
+            table_pos_idxes = slice(6, 8)
+            action_idx = 8
+
+            # Rotate left
+            if action == self.actions.left or action == self.actions.right:
+                mask[agent_dir_idx, action_idx] = True
+
+            # Move forward
+            elif action == self.actions.forward:
+                pos_idx = self.agent_dir % 2
+                if can_overlap:
+                    mask[pos_idx, agent_dir_idx] = True
+                    mask[pos_idx, action_idx] = True
+                else:
+                    mask[pos_idx, agent_pos_idxes] = True
+                    mask[pos_idx, agent_dir_idx] = True
+                    if obj == self.printer:
+                        mask[pos_idx, printer_pos_idxes] = True
+                    elif obj == self.table:
+                        mask[pos_idx, table_pos_idxes] = True
+            elif action == self.actions.pickup:
+                if picked:
+                    mask[printer_pos_idxes, agent_pos_idxes] = True
+                    mask[printer_pos_idxes, agent_dir_idx] = True
+                    mask[printer_pos_idxes, printer_pos_idxes] = True
+                    mask[printer_pos_idxes, action_idx] = True
+            elif action == self.actions.drop:
+                mask[printer_pos_idxes, agent_pos_idxes] = True
+                mask[printer_pos_idxes, agent_dir_idx] = True
+                if dropped:
+                    mask[printer_pos_idxes, action_idx] = True
+            elif action == self.actions.toggle:
+                if toggled:
+                    mask[printer_state_idx, action_idx] = True
+                    if not self.printer_inhandofrobot:
+                        mask[printer_state_idx, agent_pos_idxes] = True
+                        mask[printer_state_idx, agent_dir_idx] = True
+                        mask[printer_state_idx, printer_pos_idxes] = True
+            info["local_causality"] = mask
 
         return obs, reward, done, info
 
