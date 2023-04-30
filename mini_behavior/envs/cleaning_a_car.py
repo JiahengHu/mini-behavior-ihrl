@@ -70,12 +70,6 @@ class CleaningACarEnv(RoomGrid):
 
         return True
 
-    def _reward(self):
-        if self._end_conditions():
-            return 1
-        else:
-            return 0
-
     def _end_conditions(self):
         car = self.objs['car'][0]
         rag = self.objs['rag'][0]

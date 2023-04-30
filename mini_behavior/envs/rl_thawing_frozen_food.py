@@ -63,8 +63,10 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         """
         self.stage_checkpoints = {"frig_open": False, "date_thaw": False, "fish_thaw": False,
                                   "olive_thaw": False, "succeed": False}
+        self.stage_completion_tracker = 0
 
-    def _reward(self):
+    def update_stage_checkpoint(self):
+        self.stage_completion_tracker += 1
         if not self.stage_checkpoints["frig_open"]:
             if self.frig_open:
                 self.stage_checkpoints["frig_open"] = True
@@ -85,6 +87,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             if self._end_conditions():
                 self.stage_checkpoints["succeed"] = True
                 return 1
+        self.stage_completion_tracker -= 1
         return 0
 
     def reset(self):
@@ -284,7 +287,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         # done = self._end_conditions() or self.step_count >= self.max_steps
         done = self.step_count >= self.max_steps
         obs = self.gen_obs()
-        info = {"success": self.check_success()}
+        info = {"success": self.check_success(), "stage_completion": self.stage_completion_tracker}
 
         if evaluate_mask:
             feature_dim = 17

@@ -437,12 +437,13 @@ class MiniBehaviorEnv(MiniGridEnv):
 
     def _reward(self):
         """
-        So that chidren classes don't have to define sparse reward anymore
+        This reward is only used by rl_env
+        For other envs, might need to change this
         """
-        if self._end_conditions():
+        stage_reward = self.update_stage_checkpoint()
+        if self.stage_checkpoints["succeed"]:
             return 1
-        else:
-            return 0
+        return stage_reward
 
     def update_states(self):
         for obj in self.obj_instances.values():

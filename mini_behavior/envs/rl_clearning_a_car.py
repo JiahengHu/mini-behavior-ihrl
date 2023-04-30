@@ -60,6 +60,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         These values are used for keeping track of partial completion reward
         """
         self.stage_checkpoints = {"rag_soaked": False, "car_not_stain": False, "succeed": False}
+        self.stage_completion_tracker = 0
 
     def reset(self):
         obs = super().reset()
@@ -136,7 +137,8 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
 
         return action
 
-    def _reward(self):
+    def update_stage_checkpoint(self):
+        self.stage_completion_tracker += 1
         if not self.stage_checkpoints["rag_soaked"]:
             if self.rag_soak == 5:
                 self.stage_checkpoints["rag_soaked"] = True
@@ -149,6 +151,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             if self._end_conditions():
                 self.stage_checkpoints["succeed"] = True
                 return 1
+        self.stage_completion_tracker -= 1
         return 0
 
     def gen_obs(self):
@@ -229,7 +232,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         # done = self._end_conditions() or self.step_count >= self.max_steps
         done = self.step_count >= self.max_steps
         obs = self.gen_obs()
-        info = {"success": self.check_success()}
+        info = {"success": self.check_success(), "stage_completion": self.stage_completion_tracker}
 
         return obs, reward, done, info
 

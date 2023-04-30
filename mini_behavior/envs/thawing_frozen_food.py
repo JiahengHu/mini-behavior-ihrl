@@ -50,12 +50,6 @@ class ThawingFrozenFoodEnv(RoomGrid):
         for obj in date + olive + fish:
             obj.states['inside'].set_value(electric_refrigerator, True)
 
-    def _reward(self):
-        if self._end_conditions():
-            return 1
-        else:
-            return 0
-
     def _init_conditions(self):
         for obj in self.objs['date'] + self.objs['olive'] + self.objs['fish']:
             assert obj.check_abs_state(self, 'freezable')

@@ -15,7 +15,7 @@ from rl.utils.other import seed, device
 # model = 'MiniGrid-ThrowLeftoversNavigation-8x8-N2-v0_22-07-20-16-13-11'
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--env", default='MiniGrid-SimpleInstallingAPrinter-8x8-N2-v0', # 'MiniGrid-FloorPlanEnv-16x16-N1-v0',
+parser.add_argument("--env", default='MiniGrid-installing_printer-v0', # 'MiniGrid-FloorPlanEnv-16x16-N1-v0',
                     help="name of the environment to be run (REQUIRED)")
 parser.add_argument("--seed", type=int, default=20,
                     help="random seed (default: 0)")
@@ -67,10 +67,13 @@ for episode in range(args.episodes):
             frames.append(numpy.moveaxis(env.render("rgb_array"), 2, 0))
 
         action = env.generate_action()  # action_space.sample()
-        obs, reward, done, _ = env.step(action)
+        obs, reward, done, info = env.step(action)
         # print(env.last_action.name)
         print(action)
         print(obs)
+        print(f"stage completed: {info['stage_completion']}")
+        # print("Causal GT:")
+        # print(info['local_causality'])
         print(f"reward: {reward}\n")
 
         if done or env.window.closed:
