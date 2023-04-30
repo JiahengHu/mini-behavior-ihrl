@@ -39,8 +39,10 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             num_rows=1,
             num_cols=1,
             max_steps=300,
+            use_stage_reward=False
     ):
         self.room_size = room_size
+        self.use_stage_reward = use_stage_reward
 
         super().__init__(mode=mode,
                          room_size=room_size,

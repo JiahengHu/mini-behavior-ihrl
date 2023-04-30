@@ -443,7 +443,11 @@ class MiniBehaviorEnv(MiniGridEnv):
         stage_reward = self.update_stage_checkpoint()
         if self.stage_checkpoints["succeed"]:
             return 1
-        return stage_reward
+        if self.use_stage_reward:
+            return stage_reward
+        else:
+            return 0
+
 
     def update_states(self):
         for obj in self.obj_instances.values():
