@@ -208,7 +208,7 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
 
         if evaluate_mask:
             feature_dim = 8
-            mask = np.zeros((feature_dim, feature_dim + 1), dtype=bool)
+            mask = np.eye(feature_dim, feature_dim + 1, dtype=bool)
             agent_pos_idxes = slice(0, 2)
             agent_dir_idx = 2
             printer_pos_idxes = slice(3, 5)

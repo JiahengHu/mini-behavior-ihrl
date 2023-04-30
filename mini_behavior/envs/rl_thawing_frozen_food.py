@@ -288,7 +288,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
 
         if evaluate_mask:
             feature_dim = 17
-            mask = np.zeros((feature_dim, feature_dim + 1), dtype=bool)
+            mask = np.eye(feature_dim, feature_dim + 1, dtype=bool)
             agent_pos_idxes = slice(0, 2)
             agent_dir_idx = 2
             fish_pos_idxes = slice(3, 5)
@@ -359,10 +359,11 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                  [cur_date_frozen, self.date_frozen, date_pos_idxes, date_state_idx]
                 ]:
 
-                mask[obj_state_idx, obj_pos_idxes] = True
                 if next_obj_frozen > cur_obj_frozen:
+                    mask[obj_state_idx, obj_pos_idxes] = True
                     mask[obj_state_idx, frig_pos_idxes] = True
                 elif next_obj_frozen < cur_obj_frozen:
+                    mask[obj_state_idx, obj_pos_idxes] = True
                     mask[obj_state_idx, sink_pos_idxes] = True
             info["local_causality"] = mask
 
