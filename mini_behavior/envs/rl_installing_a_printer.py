@@ -111,7 +111,7 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         # Get the contents of the cell in front of the agent
         fwd_cell = self.grid.get(*fwd_pos)
 
-        if not self.printer_toggledon and Toggle(self).can(self.printer):
+        if not self.printer_toggledon and Toggle(self).can(self.printer) and self.printer_ontop_table:
             action = self.actions.toggle  # toggle
 
         elif self.printer_inhandofrobot:
@@ -190,8 +190,10 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
                 dropped = True
         elif action == self.actions.toggle:
             if Toggle(self).can(self.printer):
-                Toggle(self).do(self.printer)
-                toggled = True
+                # Modified Env: can only toggle if one table
+                if self.printer_ontop_table:
+                    Toggle(self).do(self.printer)
+                    toggled = True
 
         # We need to evaluate mask before we call "gen_obs"
         if evaluate_mask:
@@ -237,10 +239,10 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
             elif action == self.actions.toggle:
                 if toggled:
                     mask[printer_state_idx, action_idx] = True
-                    if not self.printer_inhandofrobot:
-                        mask[printer_state_idx, agent_pos_idxes] = True
-                        mask[printer_state_idx, agent_dir_idx] = True
-                        mask[printer_state_idx, printer_pos_idxes] = True
+                    # if not self.printer_inhandofrobot:
+                    mask[printer_state_idx, agent_pos_idxes] = True
+                    mask[printer_state_idx, agent_dir_idx] = True
+                    mask[printer_state_idx, printer_pos_idxes] = True
 
             # Add causal mask for printer_on_table
             mask[printer_table_idx, printer_table_idx] = False

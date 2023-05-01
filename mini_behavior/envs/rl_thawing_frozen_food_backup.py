@@ -1,3 +1,7 @@
+'''
+This file is currently not used
+'''
+
 from mini_behavior.roomgrid import *
 from mini_behavior.register import register
 from mini_behavior.grid import is_obj
@@ -12,9 +16,10 @@ import math
 from .thawing_frozen_food import ThawingFrozenFoodEnv
 
 
+
 class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
     """
-    Thawing with a single object
+    Environment in which the agent is instructed to ...
     This is a wrapper around the original mini-behavior environment where states are represented by category, and
     actions are converted to integer selection
     """
@@ -25,7 +30,11 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         open = 3
         close = 4
         pickup_fish = 5
-        drop_fish = 6
+        pickup_olive = 6
+        pickup_date = 7
+        drop_fish = 8
+        drop_olive = 9
+        drop_date = 10
 
     def __init__(
             self,
@@ -58,7 +67,8 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         """
         These values are used for keeping track of partial completion reward
         """
-        self.stage_checkpoints = {"frig_open": False, "fish_pickup": False, "fish_thaw": False, "succeed": False}
+        self.stage_checkpoints = {"frig_open": False, "date_thaw": False, "fish_thaw": False,
+                                  "olive_thaw": False, "succeed": False}
         self.stage_completion_tracker = 0
 
     def update_stage_checkpoint(self):
@@ -67,13 +77,17 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             if self.frig_open:
                 self.stage_checkpoints["frig_open"] = True
                 return 1
-        if not self.stage_checkpoints["fish_pickup"]:
-            if self.fish_inhand:
-                self.stage_checkpoints["fish_pickup"] = True
+        if not self.stage_checkpoints["date_thaw"]:
+            if self.date_frozen == 0:
+                self.stage_checkpoints["date_thaw"] = True
                 return 1
         if not self.stage_checkpoints["fish_thaw"]:
             if self.fish_frozen == 0:
                 self.stage_checkpoints["fish_thaw"] = True
+                return 1
+        if not self.stage_checkpoints["olive_thaw"]:
+            if self.olive_frozen == 0:
+                self.stage_checkpoints["olive_thaw"] = True
                 return 1
         if not self.stage_checkpoints["succeed"]:
             if self._end_conditions():
@@ -94,6 +108,10 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             "agent_dir": np.array([4]),
             "fish_pos": np.array([self.room_size, self.room_size]),
             "fish_state": np.array([6]),
+            "olive_pos": np.array([self.room_size, self.room_size]),
+            "olive_state": np.array([6]),
+            "date_pos": np.array([self.room_size, self.room_size]),
+            "date_state": np.array([6]),
             "sink_pos": np.array([self.room_size, self.room_size]),
             "frig_pos": np.array([self.room_size, self.room_size]),
             "frig_state": np.array([2]),
@@ -122,15 +140,37 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         if not self.frig_open and Open(self).can(self.electric_refrigerator):
             action = self.actions.open
         # If any one of the object is in frig, we go to the frig and pick it up
+        elif self.olive_inside:
+            if Pickup(self).can(self.olive):
+                action = self.actions.pickup_olive
+            else:
+                action = self.navigate_to(np.array(self.olive.cur_pos))
         elif self.fish_inside:
             if Pickup(self).can(self.fish):
                 action = self.actions.pickup_fish
             else:
                 action = self.navigate_to(np.array(self.fish.cur_pos))
+        elif self.date_inside:
+            if Pickup(self).can(self.date):
+                action = self.actions.pickup_date
+            else:
+                action = self.navigate_to(np.array(self.date.cur_pos))
         elif self.sink in fwd_cell[0]:  # refrig should be in all three dimensions, sink is just in the first dimension
             if self.fish_inhand:
                 if Drop(self).can(self.fish):
                     action = self.actions.drop_fish
+                else:
+                    self.adjusted_sink_pos = np.array(self.sink.cur_pos) + np.array([1, 0])
+                    action = self.navigate_to(self.adjusted_sink_pos)
+            elif self.date_inhand:
+                if Drop(self).can(self.date):
+                    action = self.actions.drop_date
+                else:
+                    self.adjusted_sink_pos = np.array(self.sink.cur_pos) + np.array([1, 0])
+                    action = self.navigate_to(self.adjusted_sink_pos)
+            elif self.olive_inhand:
+                if Drop(self).can(self.olive):
+                    action = self.actions.drop_olive
                 else:
                     self.adjusted_sink_pos = np.array(self.sink.cur_pos) + np.array([1, 0])
                     action = self.navigate_to(self.adjusted_sink_pos)
@@ -143,17 +183,27 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         return action
 
     def gen_obs(self):
+        self.date = self.objs['date'][0]
+        self.olive = self.objs['olive'][0]
         self.fish = self.objs['fish'][0]
         self.electric_refrigerator = self.objs['electric_refrigerator'][0]
         self.sink = self.objs['sink'][0]
 
         # The state that we need: open / close, frozen / not & in hand & nextTo & inside (x3) [Thats it]
+        self.olive_frozen = int(self.olive.check_abs_state(self, 'freezable'))
+        self.olive_inhand = int(self.olive.check_abs_state(self, 'inhandofrobot'))
+        self.olive_inside = int(self.olive.check_rel_state(self, self.electric_refrigerator, 'inside'))
+        self.olive_nextto = int(self.olive.check_rel_state(self, self.sink, 'nextto'))
 
         self.fish_frozen = int(self.fish.check_abs_state(self, 'freezable'))
         self.fish_inhand = int(self.fish.check_abs_state(self, 'inhandofrobot'))
         self.fish_inside = int(self.fish.check_rel_state(self, self.electric_refrigerator, 'inside'))
         self.fish_nextto = int(self.fish.check_rel_state(self, self.sink, 'nextto'))
 
+        self.date_frozen = int(self.date.check_abs_state(self, 'freezable'))
+        self.date_inhand = int(self.date.check_abs_state(self, 'inhandofrobot'))
+        self.date_inside = int(self.date.check_rel_state(self, self.electric_refrigerator, 'inside'))
+        self.date_nextto = int(self.date.check_rel_state(self, self.sink, 'nextto'))
 
         self.frig_open = int(self.electric_refrigerator.check_abs_state(self, 'openable'))
 
@@ -165,6 +215,10 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             "agent_dir": np.array([self.agent_dir]),
             "fish_pos": np.array(self.fish.cur_pos),
             "fish_state": np.array([self.fish_frozen]),
+            "olive_pos": np.array(self.olive.cur_pos),
+            "olive_state": np.array([self.olive_frozen]),
+            "date_pos": np.array(self.date.cur_pos),
+            "date_state": np.array([self.date_frozen]),
             "sink_pos": np.array(self.sink.cur_pos),
             "frig_pos": np.array(self.electric_refrigerator.cur_pos),
             "frig_state": np.array([self.frig_open]),
@@ -174,7 +228,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         return obs
 
     def step(self, action, evaluate_mask=True):
-        cur_fish_frozen = self.fish_frozen
+        cur_olive_frozen, cur_fish_frozen, cur_date_frozen = self.olive_frozen, self.fish_frozen, self.date_frozen
 
         self.update_states()
         self.step_count += 1
@@ -203,10 +257,26 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
 
             if can_overlap:
                 self.agent_pos = fwd_pos
+
+        elif action == self.actions.pickup_date:
+            if Pickup(self).can(self.date):
+                Pickup(self).do(self.date)
+                pickup_done, obj = True, self.date
+        elif action == self.actions.pickup_olive:
+            if Pickup(self).can(self.olive):
+                Pickup(self).do(self.olive)
+                pickup_done, obj = True, self.olive
         elif action == self.actions.pickup_fish:
             if Pickup(self).can(self.fish):
                 Pickup(self).do(self.fish)
                 pickup_done, obj = True, self.fish
+        # Drop dimension: 2 is the top
+        elif action == self.actions.drop_date:
+            obj = self.date
+            self.drop_rand_dim(obj)
+        elif action == self.actions.drop_olive:
+            obj = self.olive
+            self.drop_rand_dim(obj)
         elif action == self.actions.drop_fish:
             obj = self.fish
             self.drop_rand_dim(obj)
@@ -226,20 +296,28 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         info = {"success": self.check_success(), "stage_completion": self.stage_completion_tracker}
 
         if evaluate_mask:
-            feature_dim = 11
+            feature_dim = 17
             mask = np.eye(feature_dim, feature_dim + 1, dtype=bool)
             agent_pos_idxes = slice(0, 2)
             agent_dir_idx = 2
             fish_pos_idxes = slice(3, 5)
             fish_state_idx = 5
-            sink_pos_idxes = slice(6, 8)
-            frig_pos_idxes = slice(8, 10)
-            frig_state_idx = 10
-            action_idx = 11
+            olive_pos_idxes = slice(6, 8)
+            olive_state_idx = 8
+            date_pos_idxes = slice(9, 11)
+            date_state_idx = 11
+            sink_pos_idxes = slice(12, 14)
+            frig_pos_idxes = slice(14, 16)
+            frig_state_idx = 16
+            action_idx = 17
 
             def extract_obj_pos_idxes(obj_):
                 if obj == self.fish:
                     return fish_pos_idxes
+                elif obj == self.olive:
+                    return olive_pos_idxes
+                elif obj == self.date:
+                    return date_pos_idxes
                 elif obj == self.sink:
                     return sink_pos_idxes
                 elif obj == self.electric_refrigerator:
@@ -270,7 +348,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                 mask[obj_pos_idxes, obj_pos_idxes] = True
                 mask[obj_pos_idxes, action_idx] = True
 
-            if action in [self.actions.drop_fish]:
+            if action in [self.actions.drop_date, self.actions.drop_olive, self.actions.drop_fish]:
                 obj_pos_idxes = extract_obj_pos_idxes(obj)
                 mask[obj_pos_idxes, agent_pos_idxes] = True
                 mask[obj_pos_idxes, agent_dir_idx] = True
@@ -285,8 +363,9 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
 
             # update freeze mask
             for cur_obj_frozen, next_obj_frozen, obj_pos_idxes, obj_state_idx in \
-                [
-                 [cur_fish_frozen, self.fish_frozen, fish_pos_idxes, fish_state_idx]
+                [[cur_olive_frozen, self.olive_frozen, olive_pos_idxes, olive_state_idx],
+                 [cur_fish_frozen, self.fish_frozen, fish_pos_idxes, fish_state_idx],
+                 [cur_date_frozen, self.date_frozen, date_pos_idxes, date_state_idx]
                 ]:
 
                 if next_obj_frozen > cur_obj_frozen:

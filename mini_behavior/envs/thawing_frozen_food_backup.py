@@ -15,7 +15,7 @@ class ThawingFrozenFoodEnv(RoomGrid):
             num_cols=1,
             max_steps=1e5,
     ):
-        num_objs = {'electric_refrigerator': 1, 'fish': 1, 'sink': 1}
+        num_objs = {'date': 1, 'electric_refrigerator': 1, 'olive': 1, 'fish': 1, 'sink': 1} # fish = 4 originally
 
         self.mission = 'thaw frozen food'
 
@@ -28,6 +28,8 @@ class ThawingFrozenFoodEnv(RoomGrid):
                          )
 
     def _gen_objs(self):
+        date = self.objs['date']
+        olive = self.objs['olive']
         fish = self.objs['fish']
         electric_refrigerator = self.objs['electric_refrigerator'][0]
         sink = self.objs['sink'][0]
@@ -55,23 +57,49 @@ class ThawingFrozenFoodEnv(RoomGrid):
 
         self.place_obj(sink, reject_fn=reject_fn)
 
-        fridge_pos = self._rand_subset(electric_refrigerator.all_pos, 1)
+        fridge_pos = self._rand_subset(electric_refrigerator.all_pos, 4)
         # We make sure that all objects are of the same dimension
-        self.put_obj(fish[0], *fridge_pos[0], 2)
+        self.put_obj(date[0], *fridge_pos[0], 1)
+        self.put_obj(olive[0], *fridge_pos[1], 0)
+        self.put_obj(fish[0], *fridge_pos[2], 2)
+        # self.put_obj(fish[1], *fridge_pos[3], 1)
+        # self.put_obj(fish[2], *fridge_pos[0], 0)
+        # self.put_obj(fish[3], *fridge_pos[2], 2)
 
-        fish[0].states['inside'].set_value(electric_refrigerator, True)
+        for obj in date + olive + fish:
+            obj.states['inside'].set_value(electric_refrigerator, True)
 
     def _init_conditions(self):
-        for obj in self.objs['fish']:
+        for obj in self.objs['date'] + self.objs['olive'] + self.objs['fish']:
             assert obj.check_abs_state(self, 'freezable')
 
     def _end_conditions(self):
+        date = self.objs['date'][0]
+        olive = self.objs['olive'][0]
         fishes = self.objs['fish']
         sink = self.objs['sink'][0]
 
+        # # We don't really care about the position
+        # nextto = False
+        # for fish in fishes:
+        #     if date.check_rel_state(self, fish, 'nextto'):
+        #         nextto = True
+        # if not nextto:
+        #     return False
+
+        if not date.check_abs_state(self, "freezable") == 0:
+            return False
+        if not olive.check_abs_state(self, "freezable") == 0:
+            return False
+
         for fish in fishes:
+            # if not fish.check_rel_state(self, sink, 'nextto'):
+            #     return False
             if not fish.check_abs_state(self, "freezable") == 0:
                 return False
+
+        # if not olive.check_rel_state(self, sink, 'nextto'):
+        #     return False
 
         return True
 
