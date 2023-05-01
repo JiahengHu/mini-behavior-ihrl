@@ -34,9 +34,28 @@ class ThawingFrozenFoodEnv(RoomGrid):
         electric_refrigerator = self.objs['electric_refrigerator'][0]
         sink = self.objs['sink'][0]
 
+        frig_top = (2, 2)
+        frig_size = (self.grid.width - 4 - electric_refrigerator.width, self.grid.height - 4 - electric_refrigerator.height)
+        self.place_obj(electric_refrigerator, frig_top, frig_size)
 
-        self.place_obj(electric_refrigerator)
-        self.place_obj(sink)
+        frig_poses = electric_refrigerator.all_pos
+
+        def reject_fn(env, pos):
+            """
+            reject if block the middle grid of the frig
+            """
+            middle = [frig_poses[1], frig_poses[4]]
+            x, y = pos
+
+            for mid in middle:
+                sx, sy = mid
+                d = abs(sx - x) + abs(sy - y)
+                if d <= 1:
+                    return True
+
+            return False
+
+        self.place_obj(sink, reject_fn=reject_fn)
 
         fridge_pos = self._rand_subset(electric_refrigerator.all_pos, 4)
         # We make sure that all objects are of the same dimension

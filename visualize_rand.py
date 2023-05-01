@@ -15,7 +15,7 @@ from rl.utils.other import seed, device
 # model = 'MiniGrid-ThrowLeftoversNavigation-8x8-N2-v0_22-07-20-16-13-11'
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--env", default='MiniGrid-installing_printer-v0', # 'MiniGrid-FloorPlanEnv-16x16-N1-v0',
+parser.add_argument("--env", default='MiniGrid-installing_printer-v0', # MiniGrid-thawing-v0
                     help="name of the environment to be run (REQUIRED)")
 parser.add_argument("--seed", type=int, default=20,
                     help="random seed (default: 0)")
@@ -33,6 +33,8 @@ parser.add_argument("--memory", action="store_true", default=False,
                     help="add a LSTM to the model")
 parser.add_argument("--text", action="store_true", default=False,
                     help="add a GRU to the model")
+parser.add_argument("--reset", action="store_true", default=False,
+                    help="Keep resetting")
 
 args = parser.parse_args()
 
@@ -60,6 +62,10 @@ env.render('human')
 
 for episode in range(args.episodes):
     obs = env.reset()
+    if args.reset:
+        while True:
+            env.render('human')
+            obs = env.reset()
 
     while True:
         env.render('human')

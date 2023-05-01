@@ -35,7 +35,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
     def __init__(
             self,
             mode='not_human',
-            room_size=16,
+            room_size=8,
             num_rows=1,
             num_cols=1,
             max_steps=300,

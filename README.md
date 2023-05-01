@@ -20,6 +20,11 @@ python collect_random_data.py --env ENVNAME
 python visualize_rand.py --env ENVNAME
 ```
 
+* To test reset:
+```buildoutcfg
+python visualize_rand.py --reset --env MiniGrid-thawing-v0
+```
+
 ### Environment Setup
 * Follow setup instructions from: https://github.com/Farama-Foundation/gym-minigrid.
    pip install gym-minigrid==1.0.3

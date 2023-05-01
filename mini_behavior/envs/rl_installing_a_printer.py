@@ -29,7 +29,7 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
     def __init__(
             self,
             mode='not_human',
-            room_size=16,
+            room_size=8,
             num_rows=1,
             num_cols=1,
             max_steps=200,
@@ -150,18 +150,6 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         }
 
         return obs
-
-    def _gen_objs(self):
-        printer = self.objs['printer'][0]
-        table = self.objs['table'][0]
-
-        # table_pos = (1, 2)
-        # printer_pos = (6, 5)
-
-        table_pos = np.random.randint(1, self.room_size-2, size=2) # Make sure the table spawn within range...
-        printer_pos = np.random.randint(1, self.room_size-1, size=2)
-        self.put_obj(table, *table_pos, 0)
-        self.put_obj(printer, *printer_pos, 0)
 
     def step(self, action, evaluate_mask=True):
         self.update_states()
