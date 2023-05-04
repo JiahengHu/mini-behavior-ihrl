@@ -1,6 +1,6 @@
 from mini_behavior.roomgrid import *
 from mini_behavior.register import register
-
+import numpy as np
 
 class ThawingFrozenFoodEnv(RoomGrid):
     """
@@ -42,12 +42,11 @@ class ThawingFrozenFoodEnv(RoomGrid):
             """
             reject if block the middle grid of the frig
             """
-            middle = [frig_poses[1], frig_poses[4]]
             x, y = pos
 
-            for mid in middle:
+            for mid in frig_poses:
                 sx, sy = mid
-                d = abs(sx - x) + abs(sy - y)
+                d = np.maximum(abs(sx - x), abs(sy - y))
                 if d <= 1:
                     return True
 

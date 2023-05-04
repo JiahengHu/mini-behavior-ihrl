@@ -99,7 +99,7 @@ class Door(FurnitureObj):
 
 
 class ElectricRefrigerator(FurnitureObj):
-    def __init__(self, width=2, height=3, color='l_blue', name='electric_refrigerator'):
+    def __init__(self, width=2, height=2, color='l_blue', name='electric_refrigerator'):
         super(ElectricRefrigerator, self).__init__('electric_refrigerator', width, height, {0, 1, 2}, color, name, can_contain={0, 1, 2}, can_seebehind=False)
 
 
