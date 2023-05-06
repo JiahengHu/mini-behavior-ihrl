@@ -35,6 +35,10 @@ parser.add_argument("--text", action="store_true", default=False,
                     help="add a GRU to the model")
 parser.add_argument("--reset", action="store_true", default=False,
                     help="Keep resetting")
+parser.add_argument("--render", action="store_true", default=False,
+                    help="Whether to render")
+parser.add_argument("--scripted", action="store_true", default=False,
+                    help="Whether to used scripted policy")
 
 args = parser.parse_args()
 
@@ -62,18 +66,25 @@ env.render('human')
 
 for episode in range(args.episodes):
     obs = env.reset()
+
+    # To test reset
     if args.reset:
         while True:
             env.render('human')
             obs = env.reset()
 
     while True:
-        env.render('human')
+        if args.render:
+            env.render('human')
         if args.gif:
             frames.append(numpy.moveaxis(env.render("rgb_array"), 2, 0))
 
-        action = env.generate_action()  # action_space.sample()
+        if args.scripted:
+            action = env.generate_action()
+        else:
+            action = env.action_space.sample()
         obs, reward, done, info = env.step(action)
+
         # print(env.last_action.name)
         print(action)
         print(obs)

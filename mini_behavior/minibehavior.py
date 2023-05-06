@@ -11,6 +11,7 @@ from mini_behavior.actions import Pickup, Drop, Toggle, Open, Close
 from .objects import *
 from .grid import BehaviorGrid, GridDimension, is_obj
 from mini_behavior.window import Window
+import random
 
 # Size in pixels of a tile in the full-scale human view
 TILE_PIXELS = 32
@@ -150,6 +151,51 @@ class MiniBehaviorEnv(MiniGridEnv):
                  'obj_instances': obj_instances
                  }
         return state
+
+    # Take in an object, return a list of [pos, dir]
+    def get_obj_neighbor(self, obj):
+        assert is_obj(obj) # Maybe this will fail for furniture? Not sure
+        pos_x, pos_y = obj.cur_pos
+        width = obj.width
+        height = obj.height
+        neighbor_list = []
+
+        for x in range(pos_x, pos_x + width):
+            neighbor_list.append([(x, pos_y - 1), 1]) # down
+            neighbor_list.append([(x, pos_y + height), 3])  # up
+        for y in range(pos_y, pos_y + height):
+            neighbor_list.append([(pos_x - 1, y), 0])  # right
+            neighbor_list.append([(pos_x + width, y), 2])  # left
+
+        random.shuffle(neighbor_list)
+
+        return neighbor_list
+
+    # Take in an object, set agent to a position facing the object, return success
+    def set_agent_to_neighbor(self, target_obj):
+        # Check if holding the target obj
+        if target_obj.cur_pos[0] == 0 and target_obj.cur_pos[1] == 0:
+            return False
+
+        neighbors = self.get_obj_neighbor(target_obj)
+        for neighbor in neighbors:
+            pos, dir = neighbor
+            try:
+                cur_test_cell = self.grid.get(*pos)
+            except:
+                import ipdb
+                ipdb.set_trace()
+            can_overlap = True
+            for dim in cur_test_cell:
+                for obj in dim:
+                    if is_obj(obj) and not obj.can_overlap:
+                        can_overlap = False
+                        break
+            if can_overlap:
+                self.agent_dir = dir
+                self.agent_pos = pos
+                return True
+        return False
 
     def save_state(self, out_file='cur_state.pkl'):
         state = self.get_state()
