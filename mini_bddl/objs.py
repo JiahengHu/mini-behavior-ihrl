@@ -18,7 +18,9 @@ OBJECTS = [
     "table", "tea_bag", "teapot", "toilet", "tomato", "towel",
     "vegetable_oil",
     "water", "window",
-    "pot_plant", "marker", "chair", "document", "oatmeal", "sugar"
+    "pot_plant", "marker", "chair", "document", "oatmeal", "sugar",
+    # Added
+    "tv"
 ]
 
 FURNITURE = ['ashcan', 'bed', 'bin', 'box', 'bucket', 'cabinet', 'chair', 'car', 'countertop', 'electric_refrigerator', 'shelf', 'shower', 'sink', 'sofa', 'stove', 'table']
@@ -120,7 +122,8 @@ OBJECT_TO_IDX = {
     "candle": 93,
     "box": 94,
     "hardback": 95,
-    "goal": 96
+    "goal": 96,
+    "tv": 97,
 }
 
 IDX_TO_OBJECT = dict(zip(OBJECT_TO_IDX.values(), OBJECT_TO_IDX.keys()))
@@ -219,5 +222,6 @@ OBJECT_TO_STR = {
     "sugar": "S",
     "box": "B",
     "hardback": "H",
-    "candle": "C"
+    "candle": "C",
+    "tv": "T",
 }

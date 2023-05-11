@@ -141,6 +141,9 @@ class Table(FurnitureObj):
     def __init__(self, width=3, height=2, color='tan', name='table'):
         super(Table, self).__init__('table', width, height, {1}, color, name)
 
+class TV(FurnitureObj):
+    def __init__(self, width=2, height=2, color='grey', name='tv'):
+        super(TV, self).__init__('tv', width, height, {0, 1, 2}, color, name)
 
 OBJECT_CLASS = {
     'ashcan': Ashcan,
@@ -160,5 +163,6 @@ OBJECT_CLASS = {
     'sink': Sink,
     'sofa': Sofa,
     'stove': Stove,
-    'table': Table
+    'table': Table,
+    'tv': TV
 }

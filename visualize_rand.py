@@ -1,5 +1,3 @@
-# FROM RL TORCH
-
 import argparse
 import numpy
 import mini_behavior
@@ -8,12 +6,6 @@ from rl.utils.env import make_env
 from rl.utils.other import seed, device
 
 # Parse arguments
-
-# env = 'MiniGrid-ThrowLeftoversMulti-16x16-N2-v0'
-# model = 'throw_leftovers_model'
-# env = 'MiniGrid-ThrowLeftoversNavigation-8x8-N2-v0'
-# model = 'MiniGrid-ThrowLeftoversNavigation-8x8-N2-v0_22-07-20-16-13-11'
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--env", default='MiniGrid-installing_printer-v0', # MiniGrid-thawing-v0
                     help="name of the environment to be run (REQUIRED)")
@@ -35,7 +27,7 @@ parser.add_argument("--text", action="store_true", default=False,
                     help="add a GRU to the model")
 parser.add_argument("--reset", action="store_true", default=False,
                     help="Keep resetting")
-parser.add_argument("--render", action="store_true", default=False,
+parser.add_argument("--norend", action="store_true", default=False,
                     help="Whether to render")
 parser.add_argument("--scripted", action="store_true", default=False,
                     help="Whether to used scripted policy")
@@ -43,26 +35,27 @@ parser.add_argument("--scripted", action="store_true", default=False,
 args = parser.parse_args()
 
 # Set seed for all randomness sources
-
 seed(args.seed)
 
 # Set device
-
 print(f"Device: {device}\n")
 
 # Load environment
 
 env = make_env(args.env, args.seed)
+
 for _ in range(args.shift):
     env.reset()
+
 print("Environment loaded\n")
 
 if args.gif:
    from array2gif import write_gif
    frames = []
 
-# Create a window to view the environment
-env.render('human')
+if not args.norend:
+    # Create a window to view the environment
+    env.render('human')
 
 for episode in range(args.episodes):
     obs = env.reset()
@@ -74,7 +67,7 @@ for episode in range(args.episodes):
             obs = env.reset()
 
     while True:
-        if args.render:
+        if not args.norend:
             env.render('human')
         if args.gif:
             frames.append(numpy.moveaxis(env.render("rgb_array"), 2, 0))
@@ -83,9 +76,15 @@ for episode in range(args.episodes):
             action = env.generate_action()
         else:
             action = env.action_space.sample()
+
+        # # If you want to watch TV...
+        # if obs["step_count"] == 0:
+        #     action = env.actions.move_to_tv
+        # else:
+        #     action = env.actions.switch_tv
+
         obs, reward, done, info = env.step(action)
 
-        # print(env.last_action.name)
         print(action)
         print(obs)
         print(f"stage completed: {info['stage_completion']}")

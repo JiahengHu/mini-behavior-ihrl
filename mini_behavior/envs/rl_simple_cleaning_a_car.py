@@ -38,26 +38,31 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         toggle_sink = 7
         move_to_car = 8
         move_to_sink = 9
+        switch_tv = 10
+        move_to_tv = 11
 
 
     def __init__(
             self,
             mode='not_human',
-            room_size=16,
+            room_size=10,
             num_rows=1,
             num_cols=1,
             max_steps=300,
-            use_stage_reward=False
+            use_stage_reward=False,
+            add_noisy_tv=True,
     ):
         self.room_size = room_size
         self.use_stage_reward = use_stage_reward
-
+        self.tv_dim = 10
+        self.tv_color = 10
 
         super().__init__(mode=mode,
                          room_size=room_size,
                          num_rows=num_rows,
                          num_cols=num_cols,
-                         max_steps=max_steps
+                         max_steps=max_steps,
+                         add_noisy_tv=add_noisy_tv,
                          )
 
         # We redefine action space here
@@ -76,12 +81,13 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         self.stage_completion_tracker = 0
 
     def reset(self):
+        self.tv_state = np.zeros(self.tv_dim)
         obs = super().reset()
         self.init_stage_checkpoint()
         return obs
 
     def observation_dims(self):
-        return {
+        obs_dim = {
             "agent_pos": np.array([self.room_size, self.room_size]),
             "agent_dir": np.array([4]),
             "car_pos": np.array([self.room_size, self.room_size]),
@@ -94,6 +100,10 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             "rag_state": np.array([6, 6]),
             "step_count": np.array([1])
         }
+        if self.add_noisy_tv:
+            obs_dim["tv_state"] = np.array([self.tv_color] * self.tv_dim)
+            obs_dim["tv_pos"] = np.array([self.room_size, self.room_size])
+        return obs_dim
 
     def generate_action(self):
         # probability of choosing the hand-crafted action
@@ -235,7 +245,16 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             "step_count": np.array([float(self.step_count) / self.max_steps])
         }
 
+        if self.add_noisy_tv:
+            self.tv = self.objs['tv'][0]
+            obs["tv_state"] = self.tv_state
+            obs["tv_pos"] = self.tv.cur_pos
+
         return obs
+
+    def test_seed(self, seed=None):
+        # Just to test if this function is working as intended
+        print(f"{seed} test seed result")
 
     def step(self, action, evaluate_mask=True):
         self.update_states()
@@ -244,7 +263,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         fwd_pos = self.front_pos
         fwd_cell = self.grid.get(*fwd_pos)
 
-        move_success = picked_rag = picked_soap = toggled = False
+        move_success = picked_rag = picked_soap = toggled = switched_tv = False
 
         if action == self.actions.move_to_sink:
             move_success = self.set_agent_to_neighbor(self.sink)
@@ -256,6 +275,10 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             move_success = self.set_agent_to_neighbor(self.car)
         elif action == self.actions.move_to_soap:
             move_success = self.set_agent_to_neighbor(self.soap)
+        elif action == self.actions.move_to_tv:
+            move_success = False
+            if self.add_noisy_tv:
+                move_success = self.set_agent_to_neighbor(self.tv)
 
         elif action == self.actions.pickup_rag:
             if Pickup(self).can(self.rag):
@@ -271,16 +294,25 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
                 toggled = True
         elif action == self.actions.drop_rag:
             self.drop_rand_dim(self.rag)
-
         elif action == self.actions.drop_soap:
             self.drop_rand_dim(self.soap)
+        elif action == self.actions.switch_tv:
+            if self.add_noisy_tv:
+                if self.tv in fwd_cell[0]:
+                    self.tv_state = np.random.randint(self.tv_color, size=self.tv_dim)
+                    switched_tv = True
         else:
             print(action)
             raise NotImplementedError
 
         # We need to evaluate mask before we call "gen_obs"
         if evaluate_mask:
-            feature_dim = 17  # action, car_pos, bucket_pos, agent_pos, agent_dir, soap_pos
+            if self.add_noisy_tv:
+                feature_dim = 29  # 10 dims for tv, but this is not ideal
+                tv_state_idx = slice(17, 27)
+                tv_pos_idx = slice(27, 29)
+            else:
+                feature_dim = 17  # action, car_pos, bucket_pos, agent_pos, agent_dir, soap_pos
             mask = np.eye(feature_dim, feature_dim + 1, dtype=bool)
             agent_pos_idxes = slice(0, 2)
             agent_dir_idx = 2
@@ -293,7 +325,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             car_pos_idxes = slice(12, 14)
             car_state_idx = 14
             bucket_pos_idxes = slice(15, 17)
-            action_idx = 17
+            action_idx = -1
 
             if action in [self.actions.move_to_sink, self.actions.move_to_soap, self.actions.move_to_car,
                            self.actions.move_to_bucket, self.actions.move_to_rag]:
@@ -349,6 +381,12 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
                 mask[rag_soak_idx, rag_pos_idxes] = True
                 mask[rag_soak_idx, sink_pos_idxes] = True
                 mask[rag_soak_idx, sink_state_idx] = True
+
+            if switched_tv:
+                mask[tv_state_idx, action_idx] = True
+                mask[tv_state_idx, agent_pos_idxes] = True
+                mask[tv_state_idx, agent_dir_idx] = True
+                mask[tv_state_idx, tv_pos_idx] = True
 
         reward = self._reward()
         # done = self._end_conditions() or self.step_count >= self.max_steps

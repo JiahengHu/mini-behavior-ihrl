@@ -14,8 +14,12 @@ class CleaningACarEnv(RoomGrid):
             num_rows=1,
             num_cols=1,
             max_steps=1e5,
+            add_noisy_tv=True,
     ):
         num_objs = {'car': 1, 'rag': 1, 'shelf': 1, 'soap': 1, 'bucket': 1, 'sink': 1}
+        self.add_noisy_tv = add_noisy_tv
+        if add_noisy_tv:
+            num_objs["tv"] = 1
 
         self.mission = 'clean a car'
 
@@ -50,6 +54,11 @@ class CleaningACarEnv(RoomGrid):
 
         # dusty car
         car.states['stainable'].set_value(True)
+
+        if self.add_noisy_tv:
+            tv = self.objs['tv'][0]
+            self.place_obj(tv)
+
 
     def _init_conditions(self):
         for obj_type in ['car', 'rag', 'shelf', 'soap', 'bucket', 'sink']:
