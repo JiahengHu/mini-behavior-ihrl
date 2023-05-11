@@ -248,7 +248,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         if self.add_noisy_tv:
             self.tv = self.objs['tv'][0]
             obs["tv_state"] = self.tv_state
-            obs["tv_pos"] = self.tv.cur_pos
+            obs["tv_pos"] = np.array(self.tv.cur_pos)
 
         return obs
 
