@@ -25,9 +25,6 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
     - Toggle (sink)
     """
     class Actions(IntEnum):
-        # left = 0
-        # right = 1
-        # forward = 2
         move_to_rag = 0
         move_to_soap = 1
         move_to_bucket = 2
@@ -51,11 +48,13 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             max_steps=300,
             use_stage_reward=False,
             add_noisy_tv=True,
+            tv_dim = 10,
+            tv_channel = 10,
     ):
         self.room_size = room_size
         self.use_stage_reward = use_stage_reward
-        self.tv_dim = 10
-        self.tv_color = 10
+        self.tv_dim = tv_dim
+        self.tv_channel = tv_channel
 
         super().__init__(mode=mode,
                          room_size=room_size,
@@ -101,7 +100,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             "step_count": np.array([1])
         }
         if self.add_noisy_tv:
-            obs_dim["tv_state"] = np.array([self.tv_color] * self.tv_dim)
+            obs_dim["tv_state"] = np.array([self.tv_channel] * self.tv_dim)
             obs_dim["tv_pos"] = np.array([self.room_size, self.room_size])
         return obs_dim
 
@@ -299,7 +298,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         elif action == self.actions.switch_tv:
             if self.add_noisy_tv:
                 if self.tv in fwd_cell[0]:
-                    self.tv_state = np.random.randint(self.tv_color, size=self.tv_dim)
+                    self.tv_state = np.random.randint(self.tv_channel, size=self.tv_dim)
                     switched_tv = True
         else:
             print(action)
@@ -308,9 +307,9 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         # We need to evaluate mask before we call "gen_obs"
         if evaluate_mask:
             if self.add_noisy_tv:
-                feature_dim = 29  # 10 dims for tv, but this is not ideal
-                tv_state_idx = slice(17, 27)
-                tv_pos_idx = slice(27, 29)
+                feature_dim = 19 + self.tv_dim
+                tv_state_idx = slice(17, feature_dim - 2)
+                tv_pos_idx = slice(feature_dim - 2, feature_dim)
             else:
                 feature_dim = 17  # action, car_pos, bucket_pos, agent_pos, agent_dir, soap_pos
             mask = np.eye(feature_dim, feature_dim + 1, dtype=bool)
