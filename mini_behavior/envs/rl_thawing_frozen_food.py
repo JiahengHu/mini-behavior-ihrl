@@ -125,20 +125,21 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         elif self.fish_inside:
             if Pickup(self).can(self.fish):
                 action = self.actions.pickup_fish
+            elif not self.frig_open:
+                action = self.actions.move_frig
             else:
-                action = self.navigate_to(np.array(self.fish.cur_pos))
+                action = self.actions.move_fish
         elif self.sink in fwd_cell[0]:  # refrig should be in all three dimensions, sink is just in the first dimension
             if self.fish_inhand:
                 if Drop(self).can(self.fish):
                     action = self.actions.drop_fish
                 else:
-                    self.adjusted_sink_pos = np.array(self.sink.cur_pos) + np.array([1, 0])
-                    action = self.navigate_to(self.adjusted_sink_pos)
+                    action = self.actions.move_sink
             else:
                 # We're done, navigate randomly
-                action = self.sample_nav_action()
+                action = self.actions.move_frig
         else:
-            action = self.navigate_to(np.array(self.adjusted_sink_pos))
+            action = self.actions.move_sink
 
         return action
 

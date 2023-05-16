@@ -92,6 +92,9 @@ for episode in range(args.episodes):
         # print(info['local_causality'])
         print(f"reward: {reward}\n")
 
+        if info["success"]:
+            done = True
+
         if done or env.window.closed:
             print("episode done")
             print(f"reward: {reward}")
