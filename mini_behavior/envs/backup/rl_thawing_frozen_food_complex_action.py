@@ -19,9 +19,9 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
     actions are converted to integer selection
     """
     class Actions(IntEnum):
-        move_fish = 0
-        move_frig = 1
-        move_sink = 2
+        left = 0
+        right = 1
+        forward = 2
         open = 3
         close = 4
         pickup_fish = 5
@@ -182,14 +182,27 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         fwd_pos = self.front_pos
         fwd_cell = self.grid.get(*fwd_pos)
 
-        move_success = pickup_done = frig_manipulated = False
+        pickup_done = frig_manipulated = False
 
-        if action == self.actions.move_fish:
-            move_success = self.set_agent_to_neighbor(self.fish)
-        elif action == self.actions.move_frig:
-            move_success = self.set_agent_to_neighbor(self.electric_refrigerator)
-        elif action == self.actions.move_sink:
-            move_success = self.set_agent_to_neighbor(self.sink)
+        # Rotate left
+        if action == self.actions.left:
+            self.agent_dir = (self.agent_dir - 1) % 4
+
+        # Rotate right
+        elif action == self.actions.right:
+            self.agent_dir = (self.agent_dir + 1) % 4
+
+        # Move forward
+        elif action == self.actions.forward:
+            can_overlap = True
+            for dim in fwd_cell:
+                for obj in dim:
+                    if is_obj(obj) and not obj.can_overlap:
+                        can_overlap = False
+                        break
+
+            if can_overlap:
+                self.agent_pos = fwd_pos
         elif action == self.actions.pickup_fish:
             if Pickup(self).can(self.fish):
                 Pickup(self).do(self.fish)
@@ -234,10 +247,21 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                 else:
                     return None
 
-            if action in [self.actions.move_sink, self.actions.move_frig, self.actions.move_fish]:
-                if move_success:
-                    mask[agent_dir_idx, action_idx] = True
-                    mask[agent_pos_idxes, action_idx] = True
+            if action == self.actions.left or action == self.actions.right:
+                mask[agent_dir_idx, action_idx] = True
+
+            # Move forward
+            elif action == self.actions.forward:
+                pos_idx = self.agent_dir % 2
+                if can_overlap:
+                    mask[pos_idx, agent_dir_idx] = True
+                    mask[pos_idx, action_idx] = True
+                else:
+                    mask[pos_idx, agent_pos_idxes] = True
+                    mask[pos_idx, agent_dir_idx] = True
+                    obj_pos_idxes = extract_obj_pos_idxes(obj)
+                    if obj_pos_idxes is not None:
+                        mask[pos_idx, obj_pos_idxes] = True
 
             if pickup_done:
                 obj_pos_idxes = extract_obj_pos_idxes(obj)

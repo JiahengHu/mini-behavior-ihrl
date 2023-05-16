@@ -19,10 +19,11 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
     - states are represented by category, and
     - actions are converted to integer selection
     In order to make it work better with causal influence detection, we remove the navigation action and create the following alternatives:
-    - MoveTo (Rag, Soap, Bucket, Sink, Car, empty)
+    - MoveTo (Rag, Soap, Bucket, Sink, Car)
     - Pickup (rag, soap)
     - Drop (rag, soap)
     - Toggle (sink)
+    We also added the option to include a noisy TV
     """
     class Actions(IntEnum):
         move_to_rag = 0
@@ -47,7 +48,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             num_cols=1,
             max_steps=300,
             use_stage_reward=False,
-            add_noisy_tv=True,
+            add_noisy_tv=False,
             tv_dim = 10,
             tv_channel = 10,
     ):
