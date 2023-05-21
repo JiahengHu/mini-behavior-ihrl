@@ -2,9 +2,11 @@ from mini_behavior.roomgrid import *
 from mini_behavior.register import register
 import numpy as np
 
+
 class ThawingFrozenFoodEnv(RoomGrid):
     """
-    Environment in which the agent is instructed to clean a car
+    Environment in which the agent needs to take objects out of frig and put them inside sink
+    User can specify the type & amount of objects inside the scene through obj_in_scene
     """
 
     def __init__(
@@ -14,9 +16,17 @@ class ThawingFrozenFoodEnv(RoomGrid):
             num_rows=1,
             num_cols=1,
             max_steps=1e5,
+            obj_in_scene={'olive': 1, 'fish': 1, 'date': 1},
     ):
-        num_objs = {'electric_refrigerator': 1, 'fish': 1, 'sink': 1}
 
+        num_objs = {'sink': 1, 'electric_refrigerator': 1}
+        total_obj_num = 0
+        for obj_key, value in obj_in_scene.items():
+            num_objs[obj_key] = value
+            total_obj_num += value
+
+        self.obj_in_scene = obj_in_scene
+        self.total_obj_num = total_obj_num
         self.mission = 'thaw frozen food'
 
         super().__init__(mode=mode,
@@ -28,7 +38,7 @@ class ThawingFrozenFoodEnv(RoomGrid):
                          )
 
     def _gen_objs(self):
-        fish = self.objs['fish']
+
         electric_refrigerator = self.objs['electric_refrigerator'][0]
         sink = self.objs['sink'][0]
 
@@ -40,7 +50,7 @@ class ThawingFrozenFoodEnv(RoomGrid):
 
         def reject_fn(env, pos):
             """
-            reject if block the middle grid of the frig
+            reject if frig next to sink
             """
             x, y = pos
 
@@ -54,26 +64,22 @@ class ThawingFrozenFoodEnv(RoomGrid):
 
         self.place_obj(sink, reject_fn=reject_fn)
 
-        fridge_pos = self._rand_subset(electric_refrigerator.all_pos, 1)
-        # We make sure that all objects are of the same dimension
-        self.put_obj(fish[0], *fridge_pos[0], 2)
-
-        fish[0].states['inside'].set_value(electric_refrigerator, True)
-
-    def _init_conditions(self):
-        for obj in self.objs['fish']:
-            assert obj.check_abs_state(self, 'freezable')
+        fridge_pos = self._rand_subset(electric_refrigerator.all_pos, self.total_obj_num)
+        fridge_pos_idx = 0
+        for obj_name, num in self.obj_in_scene.items():
+            for idx in range(num):
+                obj = self.objs[obj_name][idx]
+                self.put_obj(obj, *fridge_pos[fridge_pos_idx], 1)
+                obj.states['inside'].set_value(electric_refrigerator, True)
+                fridge_pos_idx += 1
 
     def _end_conditions(self):
-        fishes = self.objs['fish']
-        sink = self.objs['sink'][0]
-
-        for fish in fishes:
-            if not fish.check_abs_state(self, "freezable") == 0:
-                return False
-
+        for obj_name, num in self.obj_in_scene.items():
+            for idx in range(num):
+                obj = self.objs[obj_name][idx]
+                if not obj.check_abs_state(self, "freezable") == 0:
+                    return False
         return True
-
 
 # non human input env
 register(

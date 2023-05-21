@@ -24,6 +24,9 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
     - Drop (rag, soap)
     - Toggle (sink)
     We also added the option to include a noisy TV
+    TODO: change action space based on
+    - 1. whether we support direct moveto
+    - 2. whether we want to have TV in the scene
     """
     class Actions(IntEnum):
         move_to_rag = 0
@@ -38,7 +41,6 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         move_to_sink = 9
         switch_tv = 10
         move_to_tv = 11
-
 
     def __init__(
             self,
@@ -77,7 +79,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         """
         These values are used for keeping track of partial completion reward
         """
-        self.stage_checkpoints = {"rag_pickup":False, "rag_soaked": False, "car_not_stain": False, "soap_in_bucket": False, "succeed": False}
+        self.stage_checkpoints = {"rag_pickup": False, "rag_soaked": False, "car_not_stain": False, "soap_in_bucket": False, "succeed": False}
         self.stage_completion_tracker = 0
 
     def reset(self):
@@ -104,14 +106,6 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             obs_dim["tv_state"] = np.array([self.tv_channel] * self.tv_dim)
             obs_dim["tv_pos"] = np.array([self.room_size, self.room_size])
         return obs_dim
-
-    def generate_action(self):
-        # probability of choosing the hand-crafted action
-        prob = 1.0  # 1.0
-        if self.np_random.random() < prob:
-            return self.hand_crafted_policy()
-        else:
-            return self.action_space.sample()
 
     def hand_crafted_policy(self):
         """
@@ -212,7 +206,6 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         return 0
 
     def gen_obs(self):
-
         self.car = self.objs['car'][0]
         self.rag = self.objs['rag'][0]
         self.shelf = self.objs['shelf'][0]
@@ -229,7 +222,6 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         self.soap_in_bucket = self.bucket.check_rel_state(self, self.soap, 'atsamelocation')
         self.rag_in_bucket = self.bucket.check_rel_state(self, self.rag, 'atsamelocation')
         self.rag_in_sink = self.sink.check_rel_state(self, self.rag, 'atsamelocation')
-
 
         obs = {
             "agent_pos": np.array(self.agent_pos),

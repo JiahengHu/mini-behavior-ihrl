@@ -85,14 +85,6 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             "step_count": np.array([1])
         }
 
-    def generate_action(self):
-        # probability of choosing the hand-crafted action
-        prob = 1.0  # 1.0
-        if self.np_random.random() < prob:
-            return self.hand_crafted_policy()
-        else:
-            return self.action_space.sample()
-
     def hand_crafted_policy(self):
         """
         A hand-crafted function to select action for next step

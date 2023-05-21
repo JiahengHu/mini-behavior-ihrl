@@ -95,14 +95,14 @@ for episode in range(args.episodes):
         if info["success"]:
             done = True
 
-        if done or env.window.closed:
+        if done: # or env.window.closed:
             print("episode done")
             print(f"reward: {reward}")
             break
 
     print("one episode done \n")
-    if env.window.closed:
-        break
+    # if env.window.closed:
+    #     break
 
 if args.gif:
     print("Saving gif... ", end="")
