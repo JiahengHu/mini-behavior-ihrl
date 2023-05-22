@@ -11,6 +11,17 @@ from gym import spaces
 import math
 from .thawing_frozen_food import ThawingFrozenFoodEnv
 
+# obj_in_scene={'fish': 1}
+obj_in_scene={'olive': 1, 'fish': 1, 'date': 1}
+# Initialize action space basedd on objects in scene
+action_list = ["move_frig", "move_sink", "open", "close"]
+for key, value in obj_in_scene.items():
+    # We assume each type of object only appears once
+    assert value == 1
+    action_list.append("move_" + key)
+    action_list.append("pickup_" + key)
+    action_list.append("drop_" + key)
+Actions = IntEnum('Actions', action_list, start=0)
 
 class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
     """
@@ -18,7 +29,6 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
     This is a wrapper around the original mini-behavior environment where states are represented by category, and
     actions are converted to integer selection
     """
-
     def __init__(
             self,
             mode='not_human',
@@ -27,8 +37,6 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             num_cols=1,
             max_steps=50,
             use_stage_reward=False,
-            obj_in_scene={'olive': 1, 'fish': 1, 'date': 1},
-            # obj_in_scene={'fish': 1},
     ):
         self.room_size = room_size
         self.use_stage_reward = use_stage_reward
@@ -40,17 +48,8 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                          max_steps=max_steps,
                          obj_in_scene=obj_in_scene,
                          )
-        # Initialize action space basedd on objects in scene
-        action_list = ["move_frig", "move_sink", "open", "close"]
 
-        for key, value in obj_in_scene.items():
-            # We assume each type of object only appears once
-            assert value == 1
-            action_list.append("move_" + key)
-            action_list.append("pickup_" + key)
-            action_list.append("drop_" + key)
-
-        self.actions = IntEnum('Actions', action_list, start=0)
+        self.actions = Actions
         self.action_space = spaces.Discrete(len(self.actions))
         self.action_dim = len(self.actions)
 
@@ -184,7 +183,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
 
         for i in range(len(self.obj_name_list)):
             obs[self.obj_name_list[i] + "_pos"] =  np.array(self.obj_list[i].cur_pos)
-            obs[self.obj_name_list[i] + "_state"] = np.array(self.obj_frozen[i])
+            obs[self.obj_name_list[i] + "_state"] = np.array([self.obj_frozen[i]])
 
         return obs
 
