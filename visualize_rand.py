@@ -87,16 +87,15 @@ for episode in range(args.episodes):
 
         print(action)
         print(obs)
-        try:
-            print(f"stage completed: {info['stage_completion']}")
-            # print("Causal GT:")
-            # print(info['local_causality'])
-            if info["success"]:
-                done = True
-        except:
-            pass
-        print(f"reward: {reward}\n")
 
+        print(f"stage completed: {info['stage_completion']}")
+        # print("Causal GT:")
+        # print(info['local_causality'])
+
+        if info["success"]:
+            done = True
+
+        print(f"reward: {reward}\n")
 
         if done: # or env.window.closed:
             print("episode done")
