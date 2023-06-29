@@ -1,18 +1,15 @@
-from mini_behavior.roomgrid import *
-from mini_behavior.register import register
 from mini_behavior.grid import is_obj
 from mini_behavior.actions import Pickup, Drop, Toggle
-from mini_behavior.objects import Wall
-from mini_bddl import ACTION_FUNC_MAPPING
 from mini_behavior.floorplan import *
 
 from enum import IntEnum
-from gym import spaces
+from gymnasium import spaces
+from collections import OrderedDict
 import math
 from .installing_a_printer import InstallingAPrinterEnv
 
 
-class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
+class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
     """
     Environment in which the agent is instructed to install a printer
     This is a wrapper around the original mini-behavior environment where states are represented by category, and
@@ -33,24 +30,30 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
             num_rows=1,
             num_cols=1,
             max_steps=200,
-            use_stage_reward=False
+            use_stage_reward=False,
+            seed=42,
+            evaluate_mask=False
     ):
         self.room_size = room_size
         self.use_stage_reward = use_stage_reward
+        self.evaluate_mask = evaluate_mask
+
+        self.reward_range = (-math.inf, math.inf)
 
         super().__init__(mode=mode,
                          room_size=room_size,
                          num_rows=num_rows,
                          num_cols=num_cols,
-                         max_steps=max_steps
+                         max_steps=max_steps,
+                         seed=seed
                          )
 
-        # This is quite hacky..
-        self.actions = SimpleInstallingAPrinterEnv.Actions
-        self.action_space = spaces.Discrete(len(self.actions))
-        self.action_dim = len(self.actions)
+        self.observation_space = spaces.Dict([
+            ("agent", spaces.MultiDiscrete([self.room_size, self.room_size, 4])),
+            ("printer", spaces.MultiDiscrete([self.room_size, self.room_size, 2, 2])),
+            ("table", spaces.MultiDiscrete([self.room_size, self.room_size]))
+        ])
 
-        self.reward_range = (-math.inf, math.inf)
         self.init_stage_checkpoint()
 
     def init_stage_checkpoint(self):
@@ -60,10 +63,10 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         self.stage_checkpoints = {"printer_toggled": False, "printer_inhand": False, "succeed": False}
         self.stage_completion_tracker = 0
 
-    def reset(self):
-        obs = super().reset()
+    def reset(self, seed=None, options=None):
+        obs, info = super().reset(seed=seed, options=options)
         self.init_stage_checkpoint()
-        return obs
+        return obs, info
 
     def update_stage_checkpoint(self):
         if not self.stage_checkpoints["printer_toggled"]:
@@ -82,16 +85,6 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
                 self.stage_completion_tracker += 1
                 return 1
         return 0
-
-    def observation_dims(self):
-        return {
-            "agent_pos": np.array([self.room_size, self.room_size]),
-            "agent_dir": np.array([4]),
-            "printer_pos": np.array([self.room_size, self.room_size]),
-            "printer_state": np.array([2, 2]),
-            "table_pos": np.array([self.room_size, self.room_size]),
-            "step_count": np.array([1])
-        }
 
     def hand_crafted_policy(self):
         """
@@ -122,28 +115,17 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
         self.printer = self.objs['printer'][0]
         self.table = self.objs['table'][0]
 
-        printer_inhandofrobot = int(self.printer.check_abs_state(self, 'inhandofrobot'))
-        printer_ontop_table = int(self.printer.check_rel_state(self, self.table, 'onTop'))
-        printer_toggledon = int(self.printer.check_abs_state(self, 'toggleable'))
+        self.printer_inhandofrobot = int(self.printer.check_abs_state(self, 'inhandofrobot'))
+        self.printer_ontop_table = int(self.printer.check_rel_state(self, self.table, 'onTop'))
+        self.printer_toggledon = int(self.printer.check_abs_state(self, 'toggleable'))
 
-        self.printer_inhandofrobot = printer_inhandofrobot
-        self.printer_ontop_table = printer_ontop_table
-        self.printer_toggledon = printer_toggledon
-
-        # Removed , printer_ontop_table, printer_inhandofrobot
-
-        obs = {
-            "agent_pos": np.array(self.agent_pos),
-            "agent_dir": np.array([self.agent_dir]),
-            "printer_pos": np.array(self.printer.cur_pos),
-            "printer_state": np.array([printer_toggledon, printer_ontop_table]),
-            "table_pos": np.array(self.table.cur_pos),
-            "step_count": np.array([float(self.step_count) / self.max_steps])
-        }
+        obs = {"agent": np.array([*self.agent_pos, self.agent_dir]),
+               "printer": np.array([*self.printer.cur_pos, self.printer_toggledon, self.printer_ontop_table]),
+               "table": np.array(self.table.cur_pos)}
 
         return obs
 
-    def step(self, action, evaluate_mask=True):
+    def step(self, action):
         self.update_states()
 
         self.step_count += 1
@@ -187,8 +169,10 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
                     Toggle(self).do(self.printer)
                     toggled = True
 
+        info = {"success": self.check_success()}
+
         # We need to evaluate mask before we call "gen_obs"
-        if evaluate_mask:
+        if self.evaluate_mask:
             feature_dim = 9
             mask = np.eye(feature_dim, feature_dim + 1, dtype=bool)
             agent_pos_idxes = slice(0, 2)
@@ -198,7 +182,6 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
             table_pos_idxes = slice(6, 8)
             printer_table_idx = 8
             action_idx = 9
-
 
             # Rotate left
             if action == self.actions.left or action == self.actions.right:
@@ -251,20 +234,21 @@ class SimpleInstallingAPrinterEnv(InstallingAPrinterEnv):
                     mask[printer_table_idx, agent_dir_idx] = True
                     mask[printer_table_idx, action_idx] = True
 
-        reward = self._reward()
-        # done = self._end_conditions() or self.step_count >= self.max_steps
-        done = self.step_count >= self.max_steps
+            info["true_graph"] = mask
+
         obs = self.gen_obs()
-        info = {"success": self.check_success(), "stage_completion": self.stage_completion_tracker}
+        reward = self._reward()
 
-        if evaluate_mask:
-            info["local_causality"] = mask
+        terminated = self._end_conditions()
+        truncated = self.step_count >= self.max_steps
 
-        return obs, reward, done, info
+        info["stage_completion"] = self.stage_completion_tracker
 
+        return obs, reward, terminated, truncated, info
 
 
 register(
     id='MiniGrid-installing_printer-v0',
-    entry_point='mini_behavior.envs:SimpleInstallingAPrinterEnv'
+    entry_point='mini_behavior.envs:FactoredInstallingAPrinterEnv',
+    kwargs={}
 )
