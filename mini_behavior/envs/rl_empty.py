@@ -1,4 +1,4 @@
-from gym_minigrid.envs.empty import EmptyEnv
+from minigrid.envs.empty import EmptyEnv
 from mini_behavior.register import register
 import numpy as np
 
