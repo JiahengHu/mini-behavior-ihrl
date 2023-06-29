@@ -1,7 +1,5 @@
 from mini_behavior.roomgrid import *
 from mini_behavior.register import register
-from enum import IntEnum
-from gym import spaces
 
 
 class InstallingAPrinterEnv(RoomGrid):
@@ -16,6 +14,7 @@ class InstallingAPrinterEnv(RoomGrid):
             num_rows=1,
             num_cols=1,
             max_steps=1e5,
+            seed=42,
     ):
         num_objs = {'printer': 1, 'table': 1}
 
@@ -29,8 +28,9 @@ class InstallingAPrinterEnv(RoomGrid):
                          max_steps=max_steps
                          )
 
-        self.actions = InstallingAPrinterEnv.Actions
-        self.action_space = spaces.Discrete(len(self.actions))
+    @staticmethod
+    def _gen_mission():
+        return "put the printer on the table and turn it on"
 
     def _gen_objs(self):
         printer = self.objs['printer'][0]
