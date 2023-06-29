@@ -32,11 +32,11 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             max_steps=200,
             use_stage_reward=False,
             seed=42,
-            evaluate_mask=False
+            evaluate_graph=False
     ):
         self.room_size = room_size
         self.use_stage_reward = use_stage_reward
-        self.evaluate_mask = evaluate_mask
+        self.evaluate_graph = evaluate_graph
 
         self.reward_range = (-math.inf, math.inf)
 
@@ -172,7 +172,7 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         info = {"success": self.check_success()}
 
         # We need to evaluate mask before we call "gen_obs"
-        if self.evaluate_mask:
+        if self.evaluate_graph:
             feature_dim = 9
             mask = np.eye(feature_dim, feature_dim + 1, dtype=bool)
             agent_pos_idxes = slice(0, 2)
