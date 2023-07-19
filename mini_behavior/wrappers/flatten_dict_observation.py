@@ -10,6 +10,10 @@ class FlattenDictObservation(FlattenObservation):
         Args:
             env: The environment to apply the wrapper
         """
+        self.dict_obs_space = env.observation_space
+        self.num_factors = len(env.observation_space.spaces)
+        self.goal_based = False
+
         self.breakpoints = [0]
         for obs_k, obs_space in env.observation_space.spaces.items():
             assert isinstance(obs_space, spaces.MultiDiscrete)
