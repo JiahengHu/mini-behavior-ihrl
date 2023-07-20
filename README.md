@@ -3,61 +3,31 @@
 
 ### For Local Causality
 **Current tested environments:**
-1. MiniGrid-SimpleInstallingAPrinter-16x16-N2-v0
-2. MiniGrid-SimpleInstallingAPrinter-8x8-N2-v0
-3. MiniGrid-SimpleThawingFrozenFoodEnv-16x16-N2-v0
-4. MiniGrid-SimpleThawingFrozenFoodEnv-8x8-N2-v0
-5. MiniGrid-SimpleCleaningACarEnv-16x16-N2-v0
-6. MiniGrid-SimpleCleaningACarEnv-8x8-N2-v0
+1. MiniGrid-installing_printer-v0
 
-* To collect data:
-```buildoutcfg
-python collect_random_data.py --env ENVNAME
-```
+* To use the environment:
+```python
+import gymnasium as gym
+import mini_behavior
+from mini_behavior.wrappers.flatten_dict_observation import FlattenDictObservation
 
-* To visualize an environment (and the scripted policy):
-```buildoutcfg
-python visualize_rand.py --env ENVNAME
-```
-
-* To test reset:
-```buildoutcfg
-python visualize_rand.py --reset --env MiniGrid-thawing-v0
+kwargs = {"room_size": 10,
+          "num_rows": 1,
+          "num_cols": 1,
+          "max_steps": 200,
+          "evaluate_graph": True}
+env = gym.make("MiniGrid-installing_printer-v0", **kwargs)
+env = FlattenDictObservation(env)
 ```
 
 ### Environment Setup
-* Follow setup instructions from: https://github.com/Farama-Foundation/gym-minigrid.
-   pip install gym-minigrid==1.0.3
-* Downgrade gym to version 0.21.0: pip install gym==0.21.0
+```buildoutcfg
+pip install -e .
+```
+In the setup.py, I list the version gynamsium and minigrid I am using, older version may also work.
 
 ### Run Code 
 To run in interactive mode: ./manual_control.py
-
-### File Descriptions 
-* **gym_minigrid/actions.py**
-    * Contains base class for actions 
-    * All action classes defined here
-
-* **gym_minigrid/bddl.py**
-    * Contains all implemented states, actions, and mappings based on original BEHAVIOR BDDL Code
-
-* **gym_minigrid/globals.py**
-    *  Defines colors, mappings, etc, used for rendering the grid environment
-
-* **gym_minigrid/minigrid.py**
-    * Contains base class for mini grid environment
-    * Modified to support multiple objects in a tile, generalizability to any actions / states / objects
-    * Significant changes made to: grid.set, grid.remove, grid.render_tile, grid.render, minigrid.ste
-
-* **gym_minigrid/objects.py**
-    * Contains base class for GridWorld objects
-    * All object classes defined here
-
-* **gym_minigrid/states.py**
-    * All states defined here, inherited from base classes in states_base.py
-
-* **gym_minigrid/states_base.py**
-    * Contains base classes for states (different classes for absolute and relative states)
 
 ### Floor plan to Mini-Behavior Environment
 * add image file of floor plan to gym_minigrid/scenes directory
