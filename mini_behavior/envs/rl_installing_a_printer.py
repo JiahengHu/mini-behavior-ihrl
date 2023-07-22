@@ -234,7 +234,17 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
                     mask[printer_table_idx, agent_dir_idx] = True
                     mask[printer_table_idx, action_idx] = True
 
-            info["true_graph"] = mask
+            info["variable_graph"] = mask
+
+            num_factors = 3
+            agent_idxes = slice(0, 3)
+            printer_idxes = slice(3, 6)
+            table_idxes = slice(6, 9)
+            factor_mask = np.zeros((num_factors, num_factors + 1), dtype=bool)
+            for i, idxes in enumerate([agent_idxes, printer_idxes, table_idxes]):
+                for j, pa_idxes in enumerate([agent_idxes, printer_idxes, table_idxes]):
+                    factor_mask[i, j] = mask[idxes, pa_idxes].any()
+            info["factor_graph"] = factor_mask
 
         obs = self.gen_obs()
         reward = self._reward()
