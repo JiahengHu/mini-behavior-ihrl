@@ -3,6 +3,7 @@
 import os
 import pickle as pkl
 import gymnasium as gym
+import numpy as np
 
 from enum import IntEnum
 from gymnasium import spaces
@@ -13,6 +14,7 @@ from mini_bddl.actions import ACTION_FUNC_MAPPING
 from mini_behavior.actions import Pickup, Drop, Toggle, Open, Close
 from .objects import *
 from .grid import BehaviorGrid, GridDimension, is_obj
+from .window import Window
 # from mini_behavior.window import Window
 import random
 
@@ -514,7 +516,9 @@ class MiniBehaviorEnv(MiniGridEnv):
             self.window = Window("mini_behavior")
             self.window.show(block=False)
 
-        img = super().render(mode='rgb_array', highlight=highlight, tile_size=tile_size)
+        # img = super().render(mode='rgb_array', highlight=highlight, tile_size=tile_size)
+        self.render_mode = 'rgb_array'
+        img = super().render()
 
         if self.render_dim is None:
             img = self.render_furniture_states(img)
