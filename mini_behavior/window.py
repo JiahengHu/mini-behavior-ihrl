@@ -1,3 +1,4 @@
+import numpy as np
 from gym_minigrid.window import *
 import matplotlib.gridspec as gridspec
 

@@ -207,9 +207,9 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
                     mask[printer_pos_idxes, printer_pos_idxes] = True
                     mask[printer_pos_idxes, action_idx] = True
             elif action == self.actions.drop:
-                mask[printer_pos_idxes, agent_pos_idxes] = True
-                mask[printer_pos_idxes, agent_dir_idx] = True
                 if dropped:
+                    mask[printer_pos_idxes, agent_pos_idxes] = True
+                    mask[printer_pos_idxes, agent_dir_idx] = True
                     mask[printer_pos_idxes, action_idx] = True
             elif action == self.actions.toggle:
                 if toggled:
