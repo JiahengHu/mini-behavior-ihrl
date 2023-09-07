@@ -242,14 +242,14 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             table_idxes = slice(6, 9)
             factor_mask = np.zeros((num_factors, num_factors + 1), dtype=bool)
             for i, idxes in enumerate([agent_idxes, printer_idxes, table_idxes]):
-                for j, pa_idxes in enumerate([agent_idxes, printer_idxes, table_idxes]):
+                for j, pa_idxes in enumerate([agent_idxes, printer_idxes, table_idxes, action_idx]):
                     factor_mask[i, j] = mask[idxes, pa_idxes].any()
             info["factor_graph"] = factor_mask
 
         obs = self.gen_obs()
         reward = self._reward()
 
-        terminated = self._end_conditions()
+        terminated = False  # self._end_conditions()
         truncated = self.step_count >= self.max_steps
 
         info["stage_completion"] = self.stage_completion_tracker
