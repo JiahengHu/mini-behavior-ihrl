@@ -32,13 +32,21 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             max_steps=200,
             use_stage_reward=False,
             seed=42,
-            evaluate_graph=False
+            evaluate_graph=False,
+            discrete_obs=True,
     ):
         self.room_size = room_size
         self.use_stage_reward = use_stage_reward
         self.evaluate_graph = evaluate_graph
+        self.discrete_obs = discrete_obs
 
         self.reward_range = (-math.inf, math.inf)
+
+        self.original_observation_space = spaces.Dict([
+                ("agent", spaces.MultiDiscrete([self.room_size, self.room_size, 4])),
+                ("printer", spaces.MultiDiscrete([self.room_size, self.room_size, 2, 2])),
+                ("table", spaces.MultiDiscrete([self.room_size, self.room_size]))
+            ])
 
         super().__init__(mode=mode,
                          room_size=room_size,
@@ -48,11 +56,14 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
                          seed=seed
                          )
 
-        self.observation_space = spaces.Dict([
-            ("agent", spaces.MultiDiscrete([self.room_size, self.room_size, 4])),
-            ("printer", spaces.MultiDiscrete([self.room_size, self.room_size, 2, 2])),
-            ("table", spaces.MultiDiscrete([self.room_size, self.room_size]))
-        ])
+        if self.discrete_obs:
+            self.observation_space = self.original_observation_space
+        else:
+            self.observation_space = spaces.Dict([
+                ("agent", spaces.Box(low=-1, high=1, shape=[3])),
+                ("printer", spaces.Box(low=-1, high=1, shape=[4])),
+                ("table", spaces.Box(low=-1, high=1, shape=[2])),
+            ])
 
         self.init_stage_checkpoint()
 
@@ -119,9 +130,13 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         self.printer_ontop_table = int(self.printer.check_rel_state(self, self.table, 'onTop'))
         self.printer_toggledon = int(self.printer.check_abs_state(self, 'toggleable'))
 
+
         obs = {"agent": np.array([*self.agent_pos, self.agent_dir]),
                "printer": np.array([*self.printer.cur_pos, self.printer_toggledon, self.printer_ontop_table]),
                "table": np.array(self.table.cur_pos)}
+        if not self.discrete_obs:
+            for k, v in obs.items():
+                obs[k] = (2. * v / (self.original_observation_space[k].nvec - 1) - 1).astype(np.float32)
 
         return obs
 
@@ -146,10 +161,12 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         # Move forward
         elif action == self.actions.forward:
             can_overlap = True
+            obstacle = None
             for dim in fwd_cell:
                 for obj in dim:
                     if is_obj(obj) and not obj.can_overlap:
                         can_overlap = False
+                        obstacle = obj
                         break
 
             if can_overlap:
@@ -196,9 +213,9 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
                 else:
                     mask[pos_idx, agent_pos_idxes] = True
                     mask[pos_idx, agent_dir_idx] = True
-                    if obj == self.printer:
+                    if obstacle == self.printer:
                         mask[pos_idx, printer_pos_idxes] = True
-                    elif obj == self.table:
+                    elif obstacle == self.table:
                         mask[pos_idx, table_pos_idxes] = True
             elif action == self.actions.pickup:
                 if picked:

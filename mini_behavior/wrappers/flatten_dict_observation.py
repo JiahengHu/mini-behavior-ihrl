@@ -17,8 +17,13 @@ class FlattenDictObservation(FlattenObservation):
         self.breakpoints = [0]
         self.factor_spaces = []
         for obs_k, obs_space in env.observation_space.spaces.items():
-            assert isinstance(obs_space, spaces.MultiDiscrete)
-            self.breakpoints.append(self.breakpoints[-1] + np.sum(obs_space.nvec))
+            if isinstance(obs_space, spaces.Box):
+                assert len(obs_space.shape) == 1
+                self.breakpoints.append(self.breakpoints[-1] + np.sum(obs_space.shape[0]))
+            elif isinstance(obs_space, spaces.MultiDiscrete):
+                self.breakpoints.append(self.breakpoints[-1] + np.sum(obs_space.nvec))
+            else:
+                raise NotImplementedError
             self.factor_spaces.append(obs_space)
         self.breakpoints = np.array(self.breakpoints)
         super().__init__(env)
