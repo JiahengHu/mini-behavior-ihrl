@@ -32,13 +32,15 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             max_steps=200,
             use_stage_reward=False,
             seed=42,
-            evaluate_graph=False
+            evaluate_graph=False,
+            random_obj_pose=True
     ):
         self.room_size = room_size
         self.use_stage_reward = use_stage_reward
         self.evaluate_graph = evaluate_graph
 
         self.reward_range = (-math.inf, math.inf)
+        self.random_obj_pose = random_obj_pose
 
         super().__init__(mode=mode,
                          room_size=room_size,
@@ -124,6 +126,18 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
                "table": np.array(self.table.cur_pos)}
 
         return obs
+
+    def _gen_objs(self):
+        if self.random_obj_pose:
+            return super()._gen_objs()
+        else:
+            printer = self.objs['printer'][0]
+            table = self.objs['table'][0]
+
+            table_pos = (1, 2)
+            printer_pos = (6, 5)
+            self.put_obj(table, *table_pos, 0)
+            self.put_obj(printer, *printer_pos, 0)
 
     def step(self, action):
         self.update_states()

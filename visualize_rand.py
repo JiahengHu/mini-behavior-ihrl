@@ -1,9 +1,7 @@
 import argparse
 import numpy
 import mini_behavior
-
-from rl.utils.env import make_env
-from rl.utils.other import seed, device
+import gymnasium as gym
 
 # Parse arguments
 parser = argparse.ArgumentParser()
@@ -34,15 +32,11 @@ parser.add_argument("--scripted", action="store_true", default=False,
 
 args = parser.parse_args()
 
-# Set seed for all randomness sources
-seed(args.seed)
-
-# Set device
-print(f"Device: {device}\n")
 
 # Load environment
 
-env = make_env(args.env, args.seed)
+kwargs = {"random_obj_pose": False}
+env = gym.make(args.env, **kwargs)
 
 for _ in range(args.shift):
     env.reset()
@@ -53,22 +47,18 @@ if args.gif:
    from array2gif import write_gif
    frames = []
 
-if not args.norend:
-    # Create a window to view the environment
-    env.render('human')
-
 for episode in range(args.episodes):
     obs = env.reset()
 
     # To test reset
     if args.reset:
         while True:
-            env.render('human')
+            env.render()
             obs = env.reset()
 
     while True:
         if not args.norend:
-            env.render('human')
+            env.render()
         if args.gif:
             frames.append(numpy.moveaxis(env.render("rgb_array"), 2, 0))
 
@@ -83,10 +73,13 @@ for episode in range(args.episodes):
         # else:
         #     action = env.actions.switch_tv
 
-        obs, reward, done, info = env.step(action)
+        obs, reward, _, done, info = env.step(action)
 
         print(action)
         print(obs)
+        # import ipdb
+        # ipdb.set_trace()
+        # exit()
 
         print(f"stage completed: {info['stage_completion']}")
         # print("Causal GT:")
