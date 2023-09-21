@@ -68,6 +68,7 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             ])
 
         self.init_stage_checkpoint()
+        self.desired_goal = None
 
     def init_stage_checkpoint(self):
         """
@@ -124,6 +125,51 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
 
         return action
 
+    def hand_crafted_lower_policy(self):
+        assert self.desired_goal.shape == (19,)
+        factor = self.desired_goal[:3].argmax()
+        parent = self.desired_goal[3:15].reshape(4, 3).argmax(axis=-1)
+        action = np.random.randint(6)
+
+        fwd_cell = self.grid.get(*self.front_pos)
+        if factor == 0:
+            if np.all(parent == np.array([1, 0, 0, 0])):
+                action = np.random.randint(3, 6)
+            elif np.all(parent == np.array([1, 0, 0, 1])):
+                action = np.random.randint(2)
+            elif np.all(parent == np.array([1, 1, 0, 0])):
+                if Pickup(self).can(self.printer):
+                    action = self.actions.forward
+                else:
+                    action = self.navigate_to(self.printer.cur_pos)
+            elif np.all(parent == np.array([1, 0, 1, 0])):
+                if self.table in fwd_cell[1]:
+                    action = self.actions.forward
+                else:
+                    action = self.navigate_to(self.table.cur_pos)
+        elif factor == 1:
+            if np.all(parent == np.array([0, 1, 0, 0])):
+                action = np.random.randint(6)
+            elif np.all(parent == np.array([1, 1, 0, 1])):
+                if Toggle(self).can(self.printer):
+                    action = self.actions.toggle
+                else:
+                    action = self.navigate_to(self.printer.cur_pos)
+            elif np.all(parent == np.array([1, 1, 1, 1])):
+                if Toggle(self).can(self.printer) and self.printer_ontop_table:
+                    action = self.actions.toggle  # toggle
+                elif self.printer_inhandofrobot:
+                    if self.table in fwd_cell[1]:
+                        action = self.actions.drop # drop
+                    else:
+                        action = self.navigate_to(self.table.cur_pos)
+                elif not self.printer_ontop_table and Pickup(self).can(self.printer):
+                    action = self.actions.pickup
+                else:
+                    action = self.navigate_to(self.printer.cur_pos)
+
+        return action
+
     def gen_obs(self):
         self.printer = self.objs['printer'][0]
         self.table = self.objs['table'][0]
@@ -165,6 +211,9 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
     def step(self, action):
         self.update_states()
 
+        if self.desired_goal is not None:
+            action = self.hand_crafted_lower_policy()
+
         self.step_count += 1
         # Get the position and contents in front of the agent
         fwd_pos = self.front_pos
@@ -203,10 +252,12 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
                 dropped = True
         elif action == self.actions.toggle:
             if Toggle(self).can(self.printer):
+                Toggle(self).do(self.printer)
+                toggled = True
                 # Modified Env: can only toggle if one table
-                if self.printer_ontop_table:
-                    Toggle(self).do(self.printer)
-                    toggled = True
+                # if self.printer_ontop_table:
+                #     Toggle(self).do(self.printer)
+                #     toggled = True
 
         info = {"success": self.check_success()}
 
@@ -218,8 +269,8 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             agent_dir_idx = 2
             printer_pos_idxes = slice(3, 5)
             printer_state_idx = 5
-            table_pos_idxes = slice(6, 8)
-            printer_table_idx = 8
+            printer_table_idx = 6
+            table_pos_idxes = slice(7, 9)
             action_idx = 9
 
             # Rotate left
@@ -277,8 +328,8 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
 
             num_factors = 3
             agent_idxes = slice(0, 3)
-            printer_idxes = slice(3, 6)
-            table_idxes = slice(6, 9)
+            printer_idxes = slice(3, 7)
+            table_idxes = slice(7, 9)
             factor_mask = np.zeros((num_factors, num_factors + 1), dtype=bool)
             for i, idxes in enumerate([agent_idxes, printer_idxes, table_idxes]):
                 for j, pa_idxes in enumerate([agent_idxes, printer_idxes, table_idxes, action_idx]):
