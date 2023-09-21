@@ -154,6 +154,14 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             self.put_obj(table, *table_pos, 0)
             self.put_obj(printer, *printer_pos, 0)
 
+    def place_agent(self):
+        if self.random_obj_pose:
+            return super().place_agent()
+        else:
+            self.agent_pos = np.array([4,4])
+            self.agent_dir = 0
+            return self.agent_pos
+
     def step(self, action):
         self.update_states()
 

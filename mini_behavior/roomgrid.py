@@ -342,7 +342,6 @@ class RoomGrid(MiniBehaviorEnv):
             super().place_agent(room.top, room.size, rand_dir, max_tries=1000)
             if self.grid.is_empty(*self.front_pos):
                 break
-
         return self.agent_pos
 
 
