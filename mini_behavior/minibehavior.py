@@ -112,6 +112,9 @@ class MiniBehaviorEnv(MiniGridEnv):
 
         self.reset(seed)
 
+    def set_render_mode(self, mode):
+        self.render_mode = mode
+
     @staticmethod
     def _gen_mission():
         raise NotImplementedError
@@ -508,10 +511,11 @@ class MiniBehaviorEnv(MiniGridEnv):
                     state._update(self)
         self.grid.state_values = {obj: obj.get_ability_values(self) for obj in self.obj_instances.values()}
 
-    def render(self, mode='human', highlight=True, tile_size=TILE_PIXELS):
+    def render(self):
         """
         Render the whole-grid human view
         """
+        mode = self.render_mode
         if mode == "human" and not self.window:
             self.window = Window("mini_behavior")
             self.window.show(block=False)
@@ -519,6 +523,7 @@ class MiniBehaviorEnv(MiniGridEnv):
         # img = super().render(mode='rgb_array', highlight=highlight, tile_size=tile_size)
         self.render_mode = 'rgb_array'
         img = super().render()
+        self.render_mode = mode
 
         if self.render_dim is None:
             img = self.render_furniture_states(img)
