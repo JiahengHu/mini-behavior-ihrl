@@ -501,7 +501,6 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                 for j, pa_idxes in enumerate([agent_idxes, frig_idxes, sink_idxes] + obj_idxes + [action_idx]):
                     factor_mask[i, j] = mask[idxes, pa_idxes].any()
             info["factor_graph"] = factor_mask
-            print(factor_mask)
 
         return obs, reward, terminated, truncated, info
 
