@@ -126,7 +126,6 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         return action
 
     def hand_crafted_lower_policy(self):
-        assert self.desired_goal.shape == (19,)
         factor = self.desired_goal[:3].argmax()
         parent = self.desired_goal[3:15].reshape(4, 3).argmax(axis=-1)
         action = np.random.randint(6)
@@ -178,9 +177,10 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         self.printer_ontop_table = int(self.printer.check_rel_state(self, self.table, 'onTop'))
         self.printer_toggledon = int(self.printer.check_abs_state(self, 'toggleable'))
 
+        printer_pos = self.agent_pos if self.printer_inhandofrobot else self.printer.cur_pos
 
         obs = {"agent": np.array([*self.agent_pos, self.agent_dir]),
-               "printer": np.array([*self.printer.cur_pos, self.printer_toggledon, self.printer_ontop_table]),
+               "printer": np.array([*printer_pos, self.printer_toggledon, self.printer_ontop_table]),
                "table": np.array(self.table.cur_pos)}
         if not self.discrete_obs:
             for k, v in obs.items():
@@ -254,10 +254,6 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             if Toggle(self).can(self.printer):
                 Toggle(self).do(self.printer)
                 toggled = True
-                # Modified Env: can only toggle if one table
-                # if self.printer_ontop_table:
-                #     Toggle(self).do(self.printer)
-                #     toggled = True
 
         info = {"success": self.check_success()}
 
@@ -280,9 +276,15 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             # Move forward
             elif action == self.actions.forward:
                 pos_idx = self.agent_dir % 2
+                printer_pos_idx = pos_idx + 3
                 if can_overlap:
                     mask[pos_idx, agent_dir_idx] = True
                     mask[pos_idx, action_idx] = True
+                    if self.printer_inhandofrobot:
+                        mask[printer_pos_idx, agent_pos_idxes] = True
+                        mask[printer_pos_idx, agent_dir_idx] = True
+                        mask[printer_pos_idx, printer_pos_idxes] = True
+                        mask[printer_pos_idx, action_idx] = True
                 else:
                     mask[pos_idx, agent_pos_idxes] = True
                     mask[pos_idx, agent_dir_idx] = True
@@ -290,6 +292,13 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
                         mask[pos_idx, printer_pos_idxes] = True
                     elif obstacle == self.table:
                         mask[pos_idx, table_pos_idxes] = True
+                    if self.printer_inhandofrobot:
+                        mask[printer_pos_idx, agent_pos_idxes] = True
+                        mask[printer_pos_idx, agent_dir_idx] = True
+                        mask[printer_pos_idx, printer_pos_idxes] = True
+                        if obstacle == self.table:
+                            mask[printer_pos_idx, table_pos_idxes] = True
+                            mask[printer_pos_idx, action_idx] = True
             elif action == self.actions.pickup:
                 if picked:
                     mask[printer_pos_idxes, agent_pos_idxes] = True
@@ -300,14 +309,14 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
                 if dropped:
                     mask[printer_pos_idxes, agent_pos_idxes] = True
                     mask[printer_pos_idxes, agent_dir_idx] = True
+                    mask[printer_pos_idxes, printer_pos_idxes] = True
                     mask[printer_pos_idxes, action_idx] = True
             elif action == self.actions.toggle:
                 if toggled:
-                    mask[printer_state_idx, action_idx] = True
-                    # if not self.printer_inhandofrobot:
                     mask[printer_state_idx, agent_pos_idxes] = True
                     mask[printer_state_idx, agent_dir_idx] = True
                     mask[printer_state_idx, printer_pos_idxes] = True
+                    mask[printer_state_idx, action_idx] = True
 
             # Add causal mask for printer_on_table
             mask[printer_table_idx, printer_table_idx] = False

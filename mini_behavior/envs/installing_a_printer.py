@@ -25,7 +25,8 @@ class InstallingAPrinterEnv(RoomGrid):
                          room_size=room_size,
                          num_rows=num_rows,
                          num_cols=num_cols,
-                         max_steps=max_steps
+                         max_steps=max_steps,
+                         seed=42,
                          )
 
     @staticmethod
