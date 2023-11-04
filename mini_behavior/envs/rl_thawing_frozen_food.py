@@ -278,12 +278,12 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                         action = self.actions.pickup
                     else:
                         action = self.navigate_to(obj.cur_pos)
-            elif np.all(parent == obj_thaw):
+            elif np.all(parent == obj_freeze):
                 if obj.check_abs_state(self, 'inhandofrobot'):
                     if self.electric_refrigerator in fwd_cell[0]:
                         action = self.actions["drop_" + obj_name]
                     else:
-                        action = self.navigate_to(self.sink.cur_pos)
+                        action = self.navigate_to(self.electric_refrigerator.cur_pos)
                 else:
                     if obj in fwd_cell[0]:
                         action = self.actions.pickup
