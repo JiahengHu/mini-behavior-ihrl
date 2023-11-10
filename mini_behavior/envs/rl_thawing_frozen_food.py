@@ -198,7 +198,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         num_actions = len(self.actions)
         action = self.action_space.sample()
 
-        if np.random.random() < 0.2:
+        if np.random.random() < 0.1:
             return action
 
         # Get the position in front of the agent
@@ -206,26 +206,31 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         # Get the contents of the cell in front of the agent
         fwd_cell = self.grid.get(*fwd_pos)
 
+        agent = 0
+        frig = 1
+        sink = 2
+        action = 6
+
         # possible_graphs
         agent_still = np.zeros_like(parent)
-        agent_still[0] = 1
+        agent_still[agent] = 1
         agent_move = np.zeros_like(parent)
-        agent_move[0] = agent_move[-1] = 1
+        agent_move[agent] = agent_move[action] = 1
         agent_blocked_frig = np.zeros_like(parent)
-        agent_blocked_frig[0] = agent_move[1] = 1
+        agent_blocked_frig[agent] = agent_blocked_frig[frig] = 1
         agent_blocked_sink = np.zeros_like(parent)
-        agent_blocked_sink[0] = agent_move[2] = 1
+        agent_blocked_sink[agent] = agent_blocked_sink[sink] = 1
         frig_by_agent = np.zeros_like(parent)
-        frig_by_agent[0] = frig_by_agent[1]  = frig_by_agent[-1] = 1
+        frig_by_agent[agent] = frig_by_agent[frig]  = frig_by_agent[action] = 1
         obj_by_agent = np.zeros_like(parent)
-        obj_by_agent[0] = obj_by_agent[factor] = obj_by_agent[-1] = 1
+        obj_by_agent[agent] = obj_by_agent[factor] = obj_by_agent[action] = 1
         obj_freeze = np.zeros_like(parent)
-        obj_freeze[1] = obj_freeze[factor] = 1
+        obj_freeze[frig] = obj_freeze[factor] = 1
         obj_thaw = np.zeros_like(parent)
-        obj_thaw[2] = obj_thaw[factor] = 1
+        obj_thaw[sink] = obj_thaw[factor] = 1
 
         frig_pos = np.array(self.electric_refrigerator.cur_pos) + np.random.randint(0, 2, size=2)
-        if factor == 0:
+        if factor == agent:
             if np.all(parent == agent_still):
                 action = np.random.randint(3, num_actions)
             elif np.all(parent == agent_move):
@@ -247,7 +252,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                     action = self.actions.forward
                 else:
                     action = self.navigate_to(self.sink.cur_pos)
-        elif factor == 1:   # interact with the frig
+        elif factor == frig:   # interact with the frig
             if np.all(parent == frig_by_agent):
                 if self.electric_refrigerator in fwd_cell[0]:
                     if self.electric_refrigerator.check_abs_state(self, 'openable'):
@@ -258,12 +263,15 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                         action = self.actions.open
                 else:
                     action = self.navigate_to(frig_pos)
-        elif factor > 2:    # interact with the object
+        elif factor > sink:    # interact with the object
             obj_id = factor - 3
             obj_name = self.obj_name_list[obj_id]
             obj = self.objs[obj_name][0]
             if np.all(parent == obj_by_agent):
-                if obj in fwd_cell[0]:
+                if obj.check_abs_state(self, 'inhandofrobot'):
+                    goal = np.random.randint(1, self.room_size - 1, size=2)
+                    action = self.navigate_to(goal)
+                elif Pickup(self).can(obj):
                     action = self.actions.pickup
                 else:
                     action = self.navigate_to(obj.cur_pos)
@@ -274,7 +282,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                     else:
                         action = self.navigate_to(self.sink.cur_pos)
                 else:
-                    if obj in fwd_cell[0]:
+                    if Pickup(self).can(obj):
                         action = self.actions.pickup
                     else:
                         action = self.navigate_to(obj.cur_pos)
@@ -285,7 +293,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                     else:
                         action = self.navigate_to(self.electric_refrigerator.cur_pos)
                 else:
-                    if obj in fwd_cell[0]:
+                    if Pickup(self).can(obj):
                         action = self.actions.pickup
                     else:
                         action = self.navigate_to(obj.cur_pos)
@@ -434,7 +442,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                 else:
                     mask[pos_idx, agent_pos_idxes] = True
                     mask[pos_idx, agent_dir_idx] = True
-                    obstacle_pos_idxes = extract_obj_pos_idxes(obj)
+                    obstacle_pos_idxes = extract_obj_pos_idxes(obstacle)
                     if obstacle_pos_idxes is not None:
                         mask[pos_idx, obstacle_pos_idxes] = True
                     for obj_name, obj_in_hand in self.obj_in_hand.items():
