@@ -229,8 +229,11 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         obj_freeze[frig] = obj_freeze[factor] = 1
         obj_thaw = np.zeros_like(parent)
         obj_thaw[sink] = obj_thaw[factor] = 1
+        obj_drop_thaw = np.zeros_like(parent)
+        obj_drop_thaw[agent] = obj_drop_thaw[factor] = obj_drop_thaw[sink] = obj_drop_thaw[action] = 1
 
         frig_pos = np.array(self.electric_refrigerator.cur_pos) + np.random.randint(0, 2, size=2)
+        sink_pos = np.array(self.sink.cur_pos) + np.random.randint(0, 2, size=2)
         if factor == agent:
             if np.all(parent == agent_still):
                 action = np.random.randint(3, num_actions)
@@ -251,7 +254,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                 if self.sink in fwd_cell[0]:
                     action = self.actions.forward
                 else:
-                    action = self.navigate_to(self.sink.cur_pos)
+                    action = self.navigate_to(sink_pos)
         elif factor == frig:   # interact with the frig
             if np.all(parent == frig_by_agent):
                 if self.electric_refrigerator in fwd_cell[0]:
@@ -270,18 +273,20 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             if np.all(parent == obj_by_agent):
                 if obj.check_abs_state(self, 'inhandofrobot'):
                     action = self.navigate_to(goal)
+                    if self.sink in fwd_cell[0]:
+                        action = self.actions["drop_" + obj_name]
                 elif Pickup(self).can(obj):
                     action = self.actions.pickup
                 else:
                     action = self.navigate_to(obj.cur_pos)
-            elif np.all(parent == obj_thaw):
+            elif np.all(parent == obj_thaw) or np.all(parent == obj_drop_thaw):
                 if obj.check_rel_state(self, self.sink, 'inside'):
                     action = self.navigate_to(goal)
                 elif obj.check_abs_state(self, 'inhandofrobot'):
                     if self.sink in fwd_cell[0]:
                         action = self.actions["drop_" + obj_name]
                     else:
-                        action = self.navigate_to(self.sink.cur_pos)
+                        action = self.navigate_to(sink_pos)
                 else:
                     action = self.navigate_to(goal)
                     # if Pickup(self).can(obj):
