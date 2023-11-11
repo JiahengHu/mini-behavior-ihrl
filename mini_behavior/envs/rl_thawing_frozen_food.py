@@ -6,7 +6,7 @@ from copy import deepcopy
 import numpy as np
 from gymnasium import spaces
 
-from mini_behavior.actions import Pickup, Drop, Open, Close
+from mini_behavior.actions import Pickup, Drop, DropIn, Open, Close
 from mini_behavior.floorplan import *
 from mini_behavior.grid import is_obj
 from .thawing_frozen_food import ThawingFrozenFoodEnv
@@ -197,8 +197,9 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         parent = parent.reshape(num_factors + 1, 3).argmax(axis=-1)
         num_actions = len(self.actions)
         action = self.action_space.sample()
+        goal = np.random.randint(1, self.room_size - 1, size=2)
 
-        if np.random.random() < 0.1:
+        if np.random.random() < 0:
             return action
 
         # Get the position in front of the agent
@@ -234,7 +235,6 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             if np.all(parent == agent_still):
                 action = np.random.randint(3, num_actions)
             elif np.all(parent == agent_move):
-                goal = np.random.randint(1, self.room_size - 1, size=2)
                 action = self.navigate_to(goal)
                 if self.electric_refrigerator in fwd_cell[0] and np.random.random() < 0.5:
                     action = np.random.choice([self.actions.forward, self.actions.open, self.actions.close])
@@ -257,7 +257,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                 if self.electric_refrigerator in fwd_cell[0]:
                     if self.electric_refrigerator.check_abs_state(self, 'openable'):
                         action = self.actions.close
-                        if np.random.random() < 0.2:
+                        if np.random.random() < 0.1:
                             action = self.actions.pickup
                     else:
                         action = self.actions.open
@@ -269,34 +269,45 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             obj = self.objs[obj_name][0]
             if np.all(parent == obj_by_agent):
                 if obj.check_abs_state(self, 'inhandofrobot'):
-                    goal = np.random.randint(1, self.room_size - 1, size=2)
                     action = self.navigate_to(goal)
                 elif Pickup(self).can(obj):
                     action = self.actions.pickup
                 else:
                     action = self.navigate_to(obj.cur_pos)
             elif np.all(parent == obj_thaw):
-                if obj.check_abs_state(self, 'inhandofrobot'):
+                if obj.check_rel_state(self, self.sink, 'inside'):
+                    action = self.navigate_to(goal)
+                elif obj.check_abs_state(self, 'inhandofrobot'):
                     if self.sink in fwd_cell[0]:
                         action = self.actions["drop_" + obj_name]
                     else:
                         action = self.navigate_to(self.sink.cur_pos)
                 else:
-                    if Pickup(self).can(obj):
-                        action = self.actions.pickup
-                    else:
-                        action = self.navigate_to(obj.cur_pos)
+                    action = self.navigate_to(goal)
+                    # if Pickup(self).can(obj):
+                    #     action = self.actions.pickup
+                    # elif (self.electric_refrigerator in fwd_cell[0] and
+                    #       not self.electric_refrigerator.check_abs_state(self, 'openable')):
+                    #     action = self.actions.open
+                    # else:
+                    #     action = self.navigate_to(obj.cur_pos)
             elif np.all(parent == obj_freeze):
-                if obj.check_abs_state(self, 'inhandofrobot'):
+                if obj.check_rel_state(self, self.electric_refrigerator, 'inside'):
+                    action = self.navigate_to(goal)
+                elif obj.check_abs_state(self, 'inhandofrobot'):
                     if self.electric_refrigerator in fwd_cell[0]:
                         action = self.actions["drop_" + obj_name]
                     else:
                         action = self.navigate_to(self.electric_refrigerator.cur_pos)
                 else:
-                    if Pickup(self).can(obj):
-                        action = self.actions.pickup
-                    else:
-                        action = self.navigate_to(obj.cur_pos)
+                    action = self.navigate_to(goal)
+                    # if Pickup(self).can(obj):
+                    #     action = self.actions.pickup
+                    # elif (self.electric_refrigerator in fwd_cell[0] and
+                    #       not self.electric_refrigerator.check_abs_state(self, 'openable')):
+                    #     action = self.actions.open
+                    # else:
+                    #     action = self.navigate_to(obj.cur_pos)
 
         return action
 
@@ -382,9 +393,12 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             assert action_name.startswith("drop")
             drop_obj_name = self.actions(action).name.split('_')[1]
             drop_obj = self.objs[drop_obj_name][0]
-            if Drop(self).can(drop_obj):
+            if DropIn(self).can(drop_obj):
                 drop_done = True
-                self.drop_rand_dim(drop_obj)
+                DropIn(self).do(drop_obj, np.random.choice(drop_obj.available_dims))
+            elif Drop(self).can(drop_obj):
+                drop_done = True
+                Drop(self).do(drop_obj, np.random.choice(drop_obj.available_dims))
 
         obs = self.gen_obs()
         reward = self._reward()
