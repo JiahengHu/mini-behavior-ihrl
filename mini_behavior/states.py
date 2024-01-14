@@ -67,6 +67,33 @@ class Cooked(AbilityState):
     def __init__(self, obj, key):
         super(Cooked, self).__init__(obj, key)
 
+# This is an added stage that is just for the cleaning a car environment
+# When the rug is used to wipe a stain, it becomes stained
+# When it is put inside a bucket with a soap, it will gradually get cleaner
+class Cleanness(AbilityState):
+    def __init__(self, obj, key):
+        super(Cleanness, self).__init__(obj, key)
+        self.value_max = 5
+        self.value_min = 0
+        self.default_value = 5
+
+    def _get_value(self, env):
+        """
+        A level from 0 to 5
+        5 is completely clean
+        """
+        return self.value
+
+    def _update(self, env=None):
+        clean_source = env.objs.get("bucket", [])[0]
+
+        if self.obj.check_rel_state(env, clean_source, 'atsamelocation') and clean_source.check_abs_state(env, 'soapable'):
+            self.value += 1
+        self.value = np.clip(self.value, self.value_min, self.value_max)
+
+    def get_value(self, *args, **kwargs):
+        return self._get_value(*args, **kwargs)
+
 
 class Dusty(AbilityState):
     def __init__(self, obj, key):
@@ -105,15 +132,19 @@ class Frozen(AbilityState):
         return self.value
 
     def _update(self, env=None):
-        # Depending on where the the object is, frozen is updated differently
+        # Depending on where the object is, frozen is updated differently
         for tool_type in self.tools:
             for cold_source in env.objs.get(tool_type, []):
                 if self.obj.check_rel_state(env, cold_source, 'inside'):
                     self.value += 1
         for tool_type in self.defrost_tools:
             for defrost_source in env.objs.get(tool_type, []):
-                if self.obj.check_rel_state(env, defrost_source, 'nextto'):
-                    self.value -= 1
+                if self.obj.check_rel_state(env, defrost_source, 'inside'):
+                    if tool_type == "sink":
+                        if defrost_source.check_abs_state(env, 'toggleable'):
+                            self.value -= 1
+                    else:
+                        self.value -= 1
         self.value = np.clip(self.value, self.value_min, self.value_max)
 
     def get_value(self, *args, **kwargs):
@@ -198,30 +229,26 @@ class Soaked(AbilityState):
     def get_value(self, *args, **kwargs):
         return self._get_value(*args, **kwargs)
 
-# This is an added stage that is just for the cleaning a car environment
-# When the rug is used to wipe a stain, it become stained
-# When it is put inside a bucket with a soap, it will gradually get cleaner
-class Cleanness(AbilityState):
+class Soaped(AbilityState):
     def __init__(self, obj, key):
-        super(Cleanness, self).__init__(obj, key)
-        self.value_max = 5
-        self.value_min = 0
-        self.default_value = 5
-
-    def _get_value(self, env):
         """
-        A level from 0 to 5
-        5 is completely clean
+        Always init True
         """
-        return self.value
+        super(Soaped, self).__init__(obj, key)
+        self.tools = ['soap']
+        self.default_value = False
 
-    def _update(self, env=None):
-        clean_source = env.objs.get("bucket", [])[0]
-        soap = env.objs.get("soap", [])[0]
-
-        if self.obj.check_rel_state(env, clean_source, 'atsamelocation') and soap.check_rel_state(self, clean_source, 'atsamelocation'):
-            self.value += 1
-        self.value = np.clip(self.value, self.value_min, self.value_max)
+    def _update(self, env):
+        """
+        not reversible
+        False if at any point, the obj is at the same location as a soap
+        """
+        if self.value == False:
+            for tool_type in self.tools:
+                for soap_tool in env.objs.get(tool_type, []):
+                    if self.obj.check_rel_state(env, soap_tool, 'atsamelocation'):
+                        self.value = True
+                        return
 
     def get_value(self, *args, **kwargs):
         return self._get_value(*args, **kwargs)
@@ -249,6 +276,9 @@ class Stained(AbilityState):
                             if tool_type == "rag":
                                 cleaning_tool.states['cleanness'].set_value(0)
                             return
+
+    def get_value(self, *args, **kwargs):
+        return self._get_value(*args, **kwargs)
 
 
 class ToggledOn(AbilityState):
