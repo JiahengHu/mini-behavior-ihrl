@@ -55,6 +55,50 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
                 ("sink", spaces.MultiDiscrete([self.room_size, self.room_size, 2])),
                 ("rag", spaces.MultiDiscrete([self.room_size, self.room_size, 6, 6])),
             ])
+        self.macro_variable_space = spaces.Dict([
+            (
+                "agent",
+                spaces.Dict([
+                    ("agent_pos", spaces.MultiDiscrete([self.room_size, self.room_size])),
+                    ("agent_dir", spaces.Discrete(4)),
+                ])
+            ),
+            (
+                "car",
+                spaces.Dict([
+                    ("car_pos", spaces.MultiDiscrete([self.room_size, self.room_size])),
+                    ("car_dirty",  spaces.Discrete(2)),
+                ])
+            ),
+            (
+                "bucket",
+                spaces.Dict([
+                    ("bucket_pos", spaces.MultiDiscrete([self.room_size, self.room_size])),
+                    ("bucket_soaped",  spaces.Discrete(2)),
+                ])
+            ),
+            (
+                "soap",
+                spaces.Dict([
+                    ("soap_pos", spaces.MultiDiscrete([self.room_size, self.room_size])),
+                ])
+            ),
+            (
+                "sink",
+                spaces.Dict([
+                    ("sink_pos", spaces.MultiDiscrete([self.room_size, self.room_size])),
+                    ("sink_toggled",  spaces.Discrete(2)),
+                ])
+            ),
+            (
+                "rag",
+                spaces.Dict([
+                    ("rag_pos", spaces.MultiDiscrete([self.room_size, self.room_size])),
+                    ("rag_soaked",  spaces.Discrete(6)),
+                    ("rag_clean",  spaces.Discrete(6)),
+                ])
+            )
+        ])
 
         super().__init__(mode=mode,
                          room_size=room_size,
@@ -75,6 +119,20 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         else:
             self.observation_space = spaces.Dict([(name, spaces.Box(low=-1, high=1, shape=[len(space.nvec)]))
                                                   for name, space in self.original_observation_space.spaces.items()])
+            self.macro_variable_space = spaces.Dict([
+                (
+                    factor_name,
+                    spaces.Dict([
+                        (micro_variable_name,
+                         spaces.Box(low=-1, high=1,
+                                    shape=[len(micro_variable_space.nvec)
+                                           if isinstance(micro_variable_space, spaces.MultiDiscrete)
+                                           else 1]))
+                        for micro_variable_name, micro_variable_space in factor_macro_variable_space.spaces.items()
+                    ])
+                )
+                for factor_name, factor_macro_variable_space in self.macro_variable_space.spaces.items()
+            ])
 
         self.reward_range = (-math.inf, math.inf)
         self.init_stage_checkpoint()
