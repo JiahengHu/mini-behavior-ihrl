@@ -420,42 +420,42 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
                 mask[rag_clean_state_idx, car_pos_idxes] = True
                 mask[rag_clean_state_idx, rag_pos_idxes] = True
                 mask[rag_clean_state_idx, rag_soak_state_idx] = True
-                if action == self.actions.drop_rag:
-                    mask[car_state_idx, agent_pos_idxes] = True
-                    mask[car_state_idx, agent_dir_idx] = True
-                    mask[car_state_idx, action_idx] = True
-                    mask[rag_clean_state_idx, agent_pos_idxes] = True
-                    mask[rag_clean_state_idx, agent_dir_idx] = True
-                    mask[rag_clean_state_idx, action_idx] = True
+                # if action == self.actions.drop_rag:
+                #     mask[car_state_idx, agent_pos_idxes] = True
+                #     mask[car_state_idx, agent_dir_idx] = True
+                #     mask[car_state_idx, action_idx] = True
+                #     mask[rag_clean_state_idx, agent_pos_idxes] = True
+                #     mask[rag_clean_state_idx, agent_dir_idx] = True
+                #     mask[rag_clean_state_idx, action_idx] = True
 
             # update rag soaking mask
             if prev_obj_state["rag_soak"] != self.obj_state["rag_soak"]:
                 mask[rag_soak_state_idx, sink_pos_idxes] = True
                 mask[rag_soak_state_idx, rag_pos_idxes] = True
                 mask[rag_soak_state_idx, rag_soak_state_idx] = True
-                if action == self.actions.drop_rag:
-                    mask[rag_soak_state_idx, agent_pos_idxes] = True
-                    mask[rag_soak_state_idx, agent_dir_idx] = True
-                    mask[rag_soak_state_idx, action_idx] = True
+                # if action == self.actions.drop_rag:
+                #     mask[rag_soak_state_idx, agent_pos_idxes] = True
+                #     mask[rag_soak_state_idx, agent_dir_idx] = True
+                #     mask[rag_soak_state_idx, action_idx] = True
 
             # update rag cleanness mask
             if prev_obj_state["rag_cleanness"] < self.obj_state["rag_cleanness"]:
                 mask[rag_clean_state_idx, bucket_pos_idxes] = True
                 mask[rag_clean_state_idx, bucket_state_idx] = True
                 mask[rag_clean_state_idx, rag_pos_idxes] = True
-                if action == self.actions.drop_rag:
-                    mask[rag_clean_state_idx, agent_pos_idxes] = True
-                    mask[rag_clean_state_idx, agent_dir_idx] = True
-                    mask[rag_clean_state_idx, action_idx] = True
+                # if action == self.actions.drop_rag:
+                #     mask[rag_clean_state_idx, agent_pos_idxes] = True
+                #     mask[rag_clean_state_idx, agent_dir_idx] = True
+                #     mask[rag_clean_state_idx, action_idx] = True
 
             # update bucket soaped mask
             if prev_obj_state["bucket_soaped"] < self.obj_state["bucket_soaped"]:
                 mask[bucket_state_idx, bucket_pos_idxes] = True
                 mask[bucket_state_idx, soap_pos_idxes] = True
-                if action == self.actions.drop_soap:
-                    mask[bucket_state_idx, agent_pos_idxes] = True
-                    mask[bucket_state_idx, agent_dir_idx] = True
-                    mask[bucket_state_idx, action_idx] = True
+                # if action == self.actions.drop_soap:
+                #     mask[bucket_state_idx, agent_pos_idxes] = True
+                #     mask[bucket_state_idx, agent_dir_idx] = True
+                #     mask[bucket_state_idx, action_idx] = True
 
             num_factors = 6
             agent_idxes = slice(0, 3)
