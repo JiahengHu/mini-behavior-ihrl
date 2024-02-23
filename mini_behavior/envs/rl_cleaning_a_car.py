@@ -264,6 +264,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
         return obs
 
     def step(self, action):
+        # print("action", self.actions(action).name)
         prev_obj_state = deepcopy(self.obj_state)
         self.update_states()
 
@@ -374,7 +375,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
                             obj_change_pos_idxes = obj_pos_idxes.start + pos_idx
                             mask[obj_change_pos_idxes, agent_pos_idxes] = True
                             mask[obj_change_pos_idxes, agent_dir_idx] = True
-                            mask[obj_change_pos_idxes, obj_change_pos_idxes] = True
+                            mask[obj_change_pos_idxes, obj_pos_idxes] = True
                             mask[obj_change_pos_idxes, action_idx] = True
                 else:
                     mask[pos_idx, agent_pos_idxes] = True
@@ -388,7 +389,7 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
                             obj_change_pos_idxes = obj_pos_idxes.start + pos_idx
                             mask[obj_change_pos_idxes, agent_pos_idxes] = True
                             mask[obj_change_pos_idxes, agent_dir_idx] = True
-                            mask[obj_change_pos_idxes, obj_change_pos_idxes] = True
+                            mask[obj_change_pos_idxes, obj_pos_idxes] = True
                             if obstacle_pos_idxes is not None:
                                 mask[obj_change_pos_idxes, obstacle_pos_idxes] = True
 
