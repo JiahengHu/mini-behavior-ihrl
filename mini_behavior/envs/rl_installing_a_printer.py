@@ -22,6 +22,7 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         pickup = 3
         drop = 4
         toggle = 5
+        clean = 6
 
     def __init__(
             self,
@@ -47,7 +48,7 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         self.original_observation_space = spaces.Dict([
                 ("agent", spaces.MultiDiscrete([self.room_size, self.room_size, 4])),
                 ("printer", spaces.MultiDiscrete([self.room_size, self.room_size, 2, 2])),
-                ("table", spaces.MultiDiscrete([self.room_size, self.room_size]))
+                ("table", spaces.MultiDiscrete([self.room_size, self.room_size, 2]))
             ])
 
         super().__init__(mode=mode,
@@ -61,11 +62,8 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         if self.discrete_obs:
             self.observation_space = self.original_observation_space
         else:
-            self.observation_space = spaces.Dict([
-                ("agent", spaces.Box(low=-1, high=1, shape=[3])),
-                ("printer", spaces.Box(low=-1, high=1, shape=[4])),
-                ("table", spaces.Box(low=-1, high=1, shape=[2])),
-            ])
+            self.observation_space = spaces.Dict([(name, spaces.Box(low=-1, high=1, shape=[len(space.nvec)]))
+                                                  for name, space in self.original_observation_space.spaces.items()])
 
         self.init_stage_checkpoint()
         self.desired_goal = None
@@ -78,6 +76,9 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         self.stage_completion_tracker = 0
 
     def reset(self, seed=None, options=None):
+        self.table_cleaned = False
+        self.printer_ready = False
+
         obs, info = super().reset(seed=seed, options=options)
         self.init_stage_checkpoint()
         return obs, info
@@ -110,8 +111,13 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         # Get the contents of the cell in front of the agent
         fwd_cell = self.grid.get(*fwd_pos)
 
-        if not self.printer_toggledon and Toggle(self).can(self.printer) and self.printer_ontop_table:
-            action = self.actions.toggle  # toggle
+        if self.printer_ontop_table:
+            if not self.printer_toggledon and Toggle(self).can(self.printer):
+                action = self.actions.toggle  # toggle
+            elif not self.table_cleaned:
+                action = self.actions.clean
+            else:
+                action = self.action_space.sample()
 
         elif self.printer_inhandofrobot:
             if self.table in fwd_cell[1]:
@@ -180,8 +186,8 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         printer_pos = self.agent_pos if self.printer_inhandofrobot else self.printer.cur_pos
 
         obs = {"agent": np.array([*self.agent_pos, self.agent_dir]),
-               "printer": np.array([*printer_pos, self.printer_toggledon, self.printer_ontop_table]),
-               "table": np.array(self.table.cur_pos)}
+               "printer": np.array([*printer_pos, self.printer_toggledon, self.printer_ready]),
+               "table": np.array([*self.table.cur_pos, self.table_cleaned])}
         if not self.discrete_obs:
             for k, v in obs.items():
                 obs[k] = (2. * v / (self.original_observation_space[k].nvec - 1) - 1).astype(np.float32)
@@ -209,6 +215,7 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             return self.agent_pos
 
     def step(self, action):
+        # print("action", self.actions(action).name)
         self.update_states()
 
         if self.desired_goal is not None:
@@ -218,8 +225,13 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         # Get the position and contents in front of the agent
         fwd_pos = self.front_pos
         fwd_cell = self.grid.get(*fwd_pos)
+        table_infront = self.table in fwd_cell[1]
 
-        picked = dropped = toggled = False
+        picked = dropped = toggled = cleaned = printer_got_ready = False
+
+        if self.printer_toggledon and self.printer_ontop_table and self.table_cleaned and not self.printer_ready:
+            self.printer_ready = True
+            printer_got_ready = True
 
         # Rotate left
         if action == self.actions.left:
@@ -232,7 +244,6 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
         # Move forward
         elif action == self.actions.forward:
             can_overlap = True
-            obstacle = None
             for dim in fwd_cell:
                 for obj in dim:
                     if is_obj(obj) and not obj.can_overlap:
@@ -254,20 +265,25 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             if Toggle(self).can(self.printer):
                 Toggle(self).do(self.printer)
                 toggled = True
+        elif action == self.actions.clean:
+            if table_infront and not self.table_cleaned:
+                self.table_cleaned = True
+                cleaned = True
 
         info = {"success": self.check_success()}
 
         # We need to evaluate mask before we call "gen_obs"
         if self.evaluate_graph:
-            feature_dim = 9
+            feature_dim = 10
             mask = np.eye(feature_dim, feature_dim + 1, dtype=bool)
             agent_pos_idxes = slice(0, 2)
             agent_dir_idx = 2
             printer_pos_idxes = slice(3, 5)
             printer_state_idx = 5
-            printer_table_idx = 6
+            printer_ready_idx = 6
             table_pos_idxes = slice(7, 9)
-            action_idx = 9
+            table_clean_idx = 9
+            action_idx = 10
 
             # Rotate left
             if action == self.actions.left or action == self.actions.right:
@@ -317,28 +333,26 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
                     mask[printer_state_idx, agent_dir_idx] = True
                     mask[printer_state_idx, printer_pos_idxes] = True
                     mask[printer_state_idx, action_idx] = True
+            elif action == self.actions.clean:
+                if cleaned:
+                    mask[table_clean_idx, agent_pos_idxes] = True
+                    mask[table_clean_idx, agent_dir_idx] = True
+                    mask[table_clean_idx, table_pos_idxes] = True
+                    mask[table_clean_idx, action_idx] = True
 
-            # Add causal mask for printer_on_table
-            mask[printer_table_idx, printer_table_idx] = False
-            if self.printer_inhandofrobot and self.table in fwd_cell[1] and action == self.actions.drop:
-                mask[printer_table_idx, table_pos_idxes] = True
-                mask[printer_table_idx, agent_pos_idxes] = True
-                mask[printer_table_idx, agent_dir_idx] = True
-                mask[printer_table_idx, action_idx] = True
-            elif self.printer_ontop_table:
-                mask[printer_table_idx, printer_pos_idxes] = True
-                mask[printer_table_idx, table_pos_idxes] = True
-                if action == self.actions.pickup and picked:
-                    mask[printer_table_idx, agent_pos_idxes] = True
-                    mask[printer_table_idx, agent_dir_idx] = True
-                    mask[printer_table_idx, action_idx] = True
+            # Add causal mask for printer_ready
+            if printer_got_ready:
+                mask[printer_ready_idx, printer_pos_idxes] = True
+                mask[printer_ready_idx, printer_state_idx] = True
+                mask[printer_ready_idx, table_pos_idxes] = True
+                mask[printer_ready_idx, table_clean_idx] = True
 
             info["variable_graph"] = mask
 
             num_factors = 3
             agent_idxes = slice(0, 3)
             printer_idxes = slice(3, 7)
-            table_idxes = slice(7, 9)
+            table_idxes = slice(7, 10)
             factor_mask = np.zeros((num_factors, num_factors + 1), dtype=bool)
             for i, idxes in enumerate([agent_idxes, printer_idxes, table_idxes]):
                 for j, pa_idxes in enumerate([agent_idxes, printer_idxes, table_idxes, action_idx]):
