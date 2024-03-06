@@ -36,11 +36,14 @@ class FactoredInstallingAPrinterEnv(InstallingAPrinterEnv):
             evaluate_graph=False,
             random_obj_pose=True,
             discrete_obs=True,
+            task_name="install_printer",
     ):
         self.room_size = room_size
         self.use_stage_reward = use_stage_reward
         self.evaluate_graph = evaluate_graph
         self.discrete_obs = discrete_obs
+        self.task_name = task_name
+        assert task_name in ["install_printer"]
 
         self.reward_range = (-math.inf, math.inf)
         self.random_obj_pose = random_obj_pose

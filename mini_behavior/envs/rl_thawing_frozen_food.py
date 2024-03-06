@@ -31,15 +31,20 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
             random_obj_pose=True,
             discrete_obs=True,
             obj_in_scene={'olive': 1, 'fish': 1, 'date': 1},
+            task_name="thaw_all",
     ):
         self.room_size = room_size
         self.use_stage_reward = use_stage_reward
         self.evaluate_graph = evaluate_graph
         self.discrete_obs = discrete_obs
+        self.task_name = task_name
+        assert task_name in ["thaw_fish", "thaw_olive", "thaw_data", "thaw_any_two", "thaw_all"]
 
         self.reward_range = (-math.inf, math.inf)
         self.random_obj_pose = random_obj_pose
         self.obj_name_list = list(obj_in_scene.keys())
+        if any([obj_num > 1 for obj_num in obj_in_scene.values()]):
+            raise NotImplementedError
 
         # state space
         self.original_observation_space = spaces.Dict([
@@ -141,9 +146,19 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                     self.stage_checkpoints[obj_name + "_thaw"] = True
                     return 1
         if not self.stage_checkpoints["succeed"]:
-            if self._end_conditions():
+            thaw_goal = self.task_name[5:]          # [:5] is "thaw_"
+            if thaw_goal == "all":
+                succeed = self._end_conditions()
+            elif thaw_goal == "any_two":
+                succeed = sum([self.stage_checkpoints[obj_name + "_thaw"] for obj_name in self.obj_name_list]) >= 2
+            else:
+                assert thaw_goal in self.obj_name_list
+                succeed = self.stage_checkpoints[thaw_goal + "_thaw"]
+
+            if succeed:
                 self.stage_checkpoints["succeed"] = True
                 return 1
+
         self.stage_completion_tracker -= 1
         return 0
 

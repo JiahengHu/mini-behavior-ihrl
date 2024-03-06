@@ -39,12 +39,15 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
             evaluate_graph=False,
             random_obj_pose=True,
             discrete_obs=True,
+            task_name="clean_rag",
     ):
         self.room_size = room_size
         self.use_stage_reward = use_stage_reward
         self.evaluate_graph = evaluate_graph
         self.random_obj_pose = random_obj_pose
         self.discrete_obs = discrete_obs
+        self.task_name = task_name
+        assert task_name in ["soak_rag", "clean_car", "clean_rag"]
 
         # state space
         self.original_observation_space = spaces.Dict([
@@ -212,7 +215,15 @@ class SimpleCleaningACarEnv(CleaningACarEnv):
                 self.stage_checkpoints["car_not_stain"] = True
                 return 1
         if not self.stage_checkpoints["succeed"]:
-            if self._end_conditions():
+            if self.task_name == "soak_rag":
+                succeed = self.stage_checkpoints["rag_soaked"]
+            elif self.task_name == "clean_car":
+                succeed = self.stage_checkpoints["car_not_stain"]
+            elif self.task_name == "clean_rag":
+                succeed = self._end_conditions()
+            else:
+                raise ValueError("unknown task_name:", self.task_name)
+            if succeed:
                 self.stage_checkpoints["succeed"] = True
                 return 1
         self.stage_completion_tracker -= 1

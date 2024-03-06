@@ -92,8 +92,7 @@ class CleaningACarEnv(RoomGrid):
         bucket = self.objs['bucket'][0]
 
         # Criteria: car and rag both clean
-        if not car.check_abs_state(self, 'stainable') \
-                and rag.check_abs_state(self, 'cleanness') == 5:
+        if not car.check_abs_state(self, 'stainable') and rag.check_abs_state(self, 'cleanness') == 5:
             return True
         else:
             return False
