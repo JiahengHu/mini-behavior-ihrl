@@ -38,7 +38,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
         self.evaluate_graph = evaluate_graph
         self.discrete_obs = discrete_obs
         self.task_name = task_name
-        assert task_name in ["thaw_fish", "thaw_olive", "thaw_data", "thaw_any_two", "thaw_all"]
+        assert task_name in ["thaw_fish", "thaw_olive", "thaw_date", "thaw_any_two", "thaw_all"]
 
         self.reward_range = (-math.inf, math.inf)
         self.random_obj_pose = random_obj_pose
