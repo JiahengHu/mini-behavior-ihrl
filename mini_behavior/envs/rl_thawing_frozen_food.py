@@ -142,7 +142,7 @@ class SimpleThawingFrozenFoodEnv(ThawingFrozenFoodEnv):
                     self.stage_checkpoints[obj_name + "_pickup"] = True
                     return 1
             if not self.stage_checkpoints[obj_name + "_thaw"]:
-                if self.obj_freeze_state[obj_name] == 0:
+                if self.obj_freeze_state[obj_name] < 5:
                     self.stage_checkpoints[obj_name + "_thaw"] = True
                     return 1
         if not self.stage_checkpoints["succeed"]:

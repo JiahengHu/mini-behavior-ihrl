@@ -123,7 +123,7 @@ class Frozen(AbilityState):
         self.defrost_tools = ["sink"]
         self.value_max = 5
         self.value_min = 0
-        self.default_value = 3
+        self.default_value = 5
 
     def _get_value(self, env):
         """
