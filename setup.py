@@ -40,6 +40,7 @@ setup(
         "gymnasium>=0.28.1",
         "numpy>=1.18.0",
         "matplotlib>=3.0",
+        "gym-minigrid==1.2.2",
         "h5py",
     ],
     python_requires=">=3.7",
