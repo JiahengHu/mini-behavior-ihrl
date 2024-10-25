@@ -25,10 +25,9 @@ from mini_behavior.envs.throwleftovers_floorplan import *
 from mini_behavior.envs.two_room_nav import *
 
 # extra
-from mini_behavior.envs.bc_installing_a_printer import *
 from mini_behavior.envs.preparing_salad_floorplan import *
 from mini_behavior.envs.rl_thawing_frozen_food import *
-from mini_behavior.envs.rl_simple_cleaning_a_car import *
+from mini_behavior.envs.rl_cleaning_a_car import *
 from mini_behavior.envs.rl_installing_a_printer import *
 
 from mini_behavior.envs.rl_empty import *

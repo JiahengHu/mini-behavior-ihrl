@@ -20,6 +20,7 @@ ALL_STATES = [
     'sliceable',
     'slicer',
     'soakable',
+    'soapable',
     'stainable',
     'toggleable',
     'under'
@@ -51,6 +52,7 @@ ABILITIES = [
     'openable',
     'sliceable',
     'soakable',
+    'soapable',
     'stainable',
     'toggleable',
     'cleanness'
@@ -78,6 +80,7 @@ STATE_FUNC_MAPPING = {
     'sliceable': Sliced,
     'slicer': Slicer,
     'soakable': Soaked,
+    'soapable': Soaped,
     'stainable': Stained,
     'toggleable': ToggledOn,
     'under': Under,

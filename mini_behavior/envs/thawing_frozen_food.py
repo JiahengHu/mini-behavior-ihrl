@@ -17,6 +17,7 @@ class ThawingFrozenFoodEnv(RoomGrid):
             num_cols=1,
             max_steps=1e5,
             obj_in_scene={'olive': 1, 'fish': 1, 'date': 1},
+            seed=42,
     ):
 
         num_objs = {'sink': 1, 'electric_refrigerator': 1}
@@ -34,8 +35,13 @@ class ThawingFrozenFoodEnv(RoomGrid):
                          room_size=room_size,
                          num_rows=num_rows,
                          num_cols=num_cols,
-                         max_steps=max_steps
+                         max_steps=max_steps,
+                         seed=seed,
                          )
+
+    @staticmethod
+    def _gen_mission():
+        return "pick up food in the refrigerator and thaw them in the sink"
 
     def _gen_objs(self):
 

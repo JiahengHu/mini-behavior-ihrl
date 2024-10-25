@@ -2,15 +2,20 @@
 
 import os
 import pickle as pkl
+import gymnasium as gym
+import numpy as np
+
 from enum import IntEnum
-from gym import spaces
-from gym_minigrid.minigrid import MiniGridEnv
-from gym_minigrid.minigrid import DIR_TO_VEC
+from gymnasium import spaces
+from minigrid.minigrid_env import MiniGridEnv
+from minigrid.core.constants import DIR_TO_VEC
+from minigrid.core.mission import MissionSpace
 from mini_bddl.actions import ACTION_FUNC_MAPPING
 from mini_behavior.actions import Pickup, Drop, Toggle, Open, Close
 from .objects import *
 from .grid import BehaviorGrid, GridDimension, is_obj
-from mini_behavior.window import Window
+from .window import Window
+# from mini_behavior.window import Window
 import random
 
 # Size in pixels of a tile in the full-scale human view
@@ -58,7 +63,6 @@ class MiniBehaviorEnv(MiniGridEnv):
         highlight=True,
         tile_size=TILE_PIXELS,
     ):
-        self.episode = 0
         self.mode = mode
         self.last_action = None
         self.action_done = None
@@ -69,7 +73,6 @@ class MiniBehaviorEnv(MiniGridEnv):
         self.tile_size = tile_size
 
         # Initialize the RNG
-        self.seed(seed=seed)
         self.furniture_view = None
 
         if num_objs is None:
@@ -91,7 +94,9 @@ class MiniBehaviorEnv(MiniGridEnv):
                 self.objs[obj_type].append(obj_instance)
                 self.obj_instances[obj_name] = obj_instance
 
-        super().__init__(grid_size=grid_size,
+        mission_space = MissionSpace(mission_func=self._gen_mission)
+        super().__init__(mission_space=mission_space,
+                         grid_size=grid_size,
                          width=width,
                          height=height,
                          max_steps=max_steps,
@@ -102,21 +107,16 @@ class MiniBehaviorEnv(MiniGridEnv):
         self.grid = BehaviorGrid(width, height)
 
         # Action enumeration for this environment, actions are discrete int
-        self.actions = MiniBehaviorEnv.Actions
+        self.actions = self.Actions
         self.action_space = spaces.Discrete(len(self.actions))
 
-        self.carrying = set()
+        self.reset(seed)
 
-    def observation_spec(self):
-        """
-        dict, {obs_key: obs_range}
-        """
-        return self.observation_dims()
+    def set_render_mode(self, mode):
+        self.render_mode = mode
 
-    def observation_dims(self):
-        """
-        dict, {obs_key: obs_range}
-        """
+    @staticmethod
+    def _gen_mission():
         raise NotImplementedError
 
     def copy_objs(self):
@@ -214,7 +214,9 @@ class MiniBehaviorEnv(MiniGridEnv):
             self.agent_dir = state['agent_dir']
         return self.grid
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
+        gym.Env.reset(self, seed=seed, options=options)
+
         # Reinitialize episode-specific variables
         self.agent_pos = (-1, -1)
         self.agent_dir = -1
@@ -223,8 +225,6 @@ class MiniBehaviorEnv(MiniGridEnv):
 
         for obj in self.obj_instances.values():
             obj.reset()
-
-        self.reward = 0
 
         # Generate a new random grid at the start of each episode
         # To keep the same grid for each episode, call env.seed() with
@@ -243,11 +243,10 @@ class MiniBehaviorEnv(MiniGridEnv):
 
         # Step count since episode start
         self.step_count = 0
-        self.episode += 1
 
         # Return first observation
         obs = self.gen_obs()
-        return obs
+        return obs, {}
 
     def _gen_grid(self, width, height):
         self._gen_objs()
@@ -255,7 +254,7 @@ class MiniBehaviorEnv(MiniGridEnv):
         self.place_agent()
 
     def _gen_objs(self):
-        assert False, "_gen_objs needs to be implemented by each environment"
+        raise NotImplementedError
 
     def _init_conditions(self):
         print('no init conditions')
@@ -483,10 +482,11 @@ class MiniBehaviorEnv(MiniGridEnv):
 
         self.update_states()
         reward = self._reward()
-        done = self._end_conditions() or self.step_count >= self.max_steps
+        terminated = self._end_conditions()
+        truncated = self.step_count >= self.max_steps
         obs = self.gen_obs()
 
-        return obs, reward, done, {}
+        return obs, reward, terminated, truncated, {}
 
     def all_reachable(self):
         return [obj for obj in self.obj_instances.values() if obj.check_abs_state(self, 'inreachofrobot')]
@@ -498,12 +498,11 @@ class MiniBehaviorEnv(MiniGridEnv):
         """
         stage_reward = self.update_stage_checkpoint()
         if self.stage_checkpoints["succeed"]:
-            return 1
+            return 0
         if self.use_stage_reward:
             return stage_reward
         else:
-            return 0
-
+            return -1
 
     def update_states(self):
         for obj in self.obj_instances.values():
@@ -512,15 +511,19 @@ class MiniBehaviorEnv(MiniGridEnv):
                     state._update(self)
         self.grid.state_values = {obj: obj.get_ability_values(self) for obj in self.obj_instances.values()}
 
-    def render(self, mode='human', highlight=True, tile_size=TILE_PIXELS):
+    def render(self):
         """
         Render the whole-grid human view
         """
+        mode = self.render_mode
         if mode == "human" and not self.window:
             self.window = Window("mini_behavior")
             self.window.show(block=False)
 
-        img = super().render(mode='rgb_array', highlight=highlight, tile_size=tile_size)
+        # img = super().render(mode='rgb_array', highlight=highlight, tile_size=tile_size)
+        self.render_mode = 'rgb_array'
+        img = super().render()
+        self.render_mode = mode
 
         if self.render_dim is None:
             img = self.render_furniture_states(img)

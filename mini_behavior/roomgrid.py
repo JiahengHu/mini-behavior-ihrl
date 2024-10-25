@@ -91,7 +91,7 @@ class RoomGrid(MiniBehaviorEnv):
         num_cols=2,
         max_steps=1e5,
         see_through_walls=False,
-        seed=500,
+        seed=42,
         agent_view_size=7,
         highlight=True
     ):
@@ -150,12 +150,12 @@ class RoomGrid(MiniBehaviorEnv):
         assert j < self.num_rows
         return self.room_grid[j][i]
 
-    def reset(self):
-        super().reset()
+    def reset(self, seed=None, options=None):
+        _, info = super().reset(seed=seed, options=options)
         for row in self.room_grid:
             for room in row:
                 room.reset()
-        return self.gen_obs()
+        return self.gen_obs(), info
 
     def _gen_grid(self, width, height):
         self._gen_rooms(width, height)
@@ -342,7 +342,6 @@ class RoomGrid(MiniBehaviorEnv):
             super().place_agent(room.top, room.size, rand_dir, max_tries=1000)
             if self.grid.is_empty(*self.front_pos):
                 break
-
         return self.agent_pos
 
 

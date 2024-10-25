@@ -7,7 +7,7 @@ from mini_bddl import ACTION_FUNC_MAPPING
 from mini_behavior.floorplan import *
 
 from enum import IntEnum
-from gym import spaces
+from gymnasium import spaces
 import math
 from .thawing_frozen_food import ThawingFrozenFoodEnv
 
