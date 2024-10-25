@@ -1,6 +1,8 @@
 # Mini-BEHAVIOR
 ###  MiniGrid Implementation of BEHAVIOR Tasks
 
+Adapted from https://github.com/StanfordVL/mini_behavior
+
 ### For Local Causality
 **Current tested environments:**
 1. MiniGrid-installing_printer-v0
@@ -24,14 +26,19 @@ env = FlattenDictObservation(env)
 ```buildoutcfg
 pip install -e .
 ```
-In the setup.py, I list the version gynamsium and minigrid I am using, older version may also work.
+Use the gynamsium and minigrid version listed in setup.py.
 
 ### Run Code 
 To run in interactive mode: ./manual_control.py
 
-### Floor plan to Mini-Behavior Environment
-* add image file of floor plan to gym_minigrid/scenes directory
-* run script to process floor plan and save grid to gym_minigrid/grids directory: `python convert_scenes.py --imgs IMG_FILENAMES`
-* `floorplan.py` will register the floor plan of each `IMG_FILENAME` as an environment with:
-    * `id='MiniGrid-IMG_FILENAME-0x0-N1-v0'`
-    * `entry_point='gym_minigrid.envs:FloorPlanEnv'`
+
+### References
+```
+@article{jin2023minibehavior,
+      title={Mini-BEHAVIOR: A Procedurally Generated Benchmark for Long-horizon Decision-Making in Embodied AI}, 
+      author={Emily Jin and Jiaheng Hu and Zhuoyi Huang and Ruohan Zhang and Jiajun Wu and Li Fei-Fei and Roberto Mart{\'i}n-Mart{\'i}n},
+      year={2023},
+      journal={arXiv preprint 2310.01824},
+}
+```
+
